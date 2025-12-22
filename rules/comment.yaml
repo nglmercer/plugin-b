@@ -3,7 +3,13 @@
 # ${data.comment || data.user.comment}
 - id: rule-id
   on: chat
+  if:
+    field: data.comment
+    operator: NEQ
+    value: ${helpers.lastMessage()}
   do:
-    type: TTS
-    params:
-      message: test
+    mode: SEQUENCE
+    actions:
+      - type: TTS
+        params:
+          message: ${data.comment}
