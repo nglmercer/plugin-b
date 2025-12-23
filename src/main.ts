@@ -39,7 +39,13 @@ async function main() {
         console.log(`   Current Rule IDs: ${ruleIds.join(", ")}`);
         const loadedPlugins = manager.listPlugins();
         console.log("Loaded plugins:", loadedPlugins);
-        await testEvent(engine,"chat",testdata);
+        
+        // Ejecutar prueba mediante el plugin RuleTester
+        const testerPlugin = manager.getPlugin("rule-tester");
+        const tester = testerPlugin?.getSharedApi ? (testerPlugin.getSharedApi() as any) : null;
+        if (tester?.testEvent) {
+            await tester.testEvent(engine, "chat", testdata);
+        }
     });
     watcher.on('error', (err) => {
         console.error('Error watching rules:', err);
@@ -58,9 +64,9 @@ async function main() {
         );
         audioFiles.push(ttsdata);
         await playlist.loadTracks(audioFiles.map((file) => file.fileBuffer));
-
+ 
         await playlist.playCurrentTrack(); */
-
+ 
         return result?.cleanedText
     })
     registry.register("lastcomment",async (action, ctx) => {
@@ -73,25 +79,6 @@ async function main() {
         return result?.cleanedText
     })
     return result;
-}
-async function testEvent(engine:RuleEngine,event:string,data:any){
-    return await engine.processEvent({
-        event: event,
-        timestamp: Date.now(),
-        data: data,
-        globals: {
-            last: () => {
-            const history = ttsSystem.getMessageHistory();
-            const lastItem = history[history.length - 1];
-            const returnItem = lastItem ? lastItem.cleanedText : "";
-            return returnItem;
-            },
-            clean: (t: any) => {
-                const result = ttsSystem.cleanOnly(String(t || ""))
-                return result;
-            }
-        }
-    });
 }
 main().then(data=>console.log(data)).catch(err=>console.log(err));
 process.on("SIGINT", () => {

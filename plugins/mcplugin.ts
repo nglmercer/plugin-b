@@ -5,6 +5,8 @@ interface ActionRegistryApi {
   register: ActionRegistry["register"];
   get: ActionRegistry["get"];
   registry: ActionRegistry;
+  registerHelper: (name: string, fn: Function) => void;
+  getHelpers: () => Record<string, Function>;
 }
 
 export class mcplugin implements IPlugin {
@@ -20,10 +22,19 @@ export class mcplugin implements IPlugin {
     if (registryPlugin?.getSharedApi) {
       const api = registryPlugin.getSharedApi() as ActionRegistryApi;
       
+      // Registrar acción
       api.registry.register("mc", (action, ctx) => {
         console.log("[mc 123123123412]", action, ctx);
         return "mc";
       });
+
+      // Registrar helper global
+      if (api.registerHelper) {
+        api.registerHelper("mcHelper", (text: string) => {
+          return `MC-PREFIX: ${text}`;
+        });
+        context.log.info("mcplugin: Helper 'mcHelper' registrado exitosamente");
+      }
       
       context.log.info("mcplugin: Acción 'mc' registrada exitosamente");
     } else {

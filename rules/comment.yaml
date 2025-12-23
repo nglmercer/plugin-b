@@ -20,4 +20,4 @@
     actions:
       - type: mc
         params:
-          message: ${globals.clean(data.comment)}
+          message: ${globals.mcHelper(data.comment)}
