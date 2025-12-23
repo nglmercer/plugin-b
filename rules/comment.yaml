@@ -4,12 +4,20 @@
 - id: rule-id
   on: chat
   if:
-    field: data.comment
-    operator: NEQ
-    value: ${helpers.lastMessage()}
+    operator: AND
+    conditions:
+      # Compara el último guardado (limpio) con el actual limpio
+      - field: ${globals.clean(data.comment)}
+        operator: NEQ
+        value: ${globals.clean(globals.last())}
+
+      # Evita mensajes vacíos después de limpiar
+      - field: ${globals.clean(data.comment)}
+        operator: NOT_IN
+        value: ["", null, undefined]
   do:
     mode: SEQUENCE
     actions:
       - type: TTS
         params:
-          message: ${data.comment}
+          message: ${globals.clean(data.comment)}
