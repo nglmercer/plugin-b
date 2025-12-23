@@ -1,0 +1,23 @@
+# import alias from ./path/to/file.json
+# chat comment
+# ${data.comment || data.user.comment}
+- id: rule-id
+  on: chat
+  if:
+    operator: AND
+    conditions:
+      # Compara el último guardado (limpio) con el actual limpio
+      - field: ${globals.clean(data.comment)}
+        operator: NEQ
+        value: ${globals.clean(globals.last())}
+
+      # Evita mensajes vacíos después de limpiar
+      - field: ${globals.clean(data.comment)}
+        operator: NOT_IN
+        value: ["", null, undefined]
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: TTS
+        params:
+          message: ${globals.clean(data.comment)}
