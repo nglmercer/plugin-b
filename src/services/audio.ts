@@ -31,7 +31,7 @@ export class TTSService {
 
   async synthesize(
     text: string,
-    voice: string = 'en-US-AriaNeural',
+    voice: string = 'es-AR-ElenaNeural',
     filename: string, // Base filename without extension
     options?: SynthesisOptions
   ): Promise<{savedPath: string, fileBuffer: Buffer}> {

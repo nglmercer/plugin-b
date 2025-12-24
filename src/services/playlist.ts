@@ -73,17 +73,28 @@ export class PlaylistManager {
 
     try {
       if (typeof currentTrack === 'string') {
+        if (!currentTrack || currentTrack.trim() === '') {
+             console.error("❌ Empty string track path");
+             return;
+        }
         await this.player.loadFile(currentTrack);
         
         // Show track metadata for files
         const metadata = getAudioMetadata(currentTrack);
         console.log("📋 Track info:", metadata);
 
-      } else {
+      } else if (Buffer.isBuffer(currentTrack)) {
+        if (currentTrack.length === 0) {
+             console.error("❌ Buffer track is empty");
+             return;
+        }
         // Convert Buffer to number[] as required by miniaudio_node loadBuffer
         const bufferData = Array.from(currentTrack);
         await this.player.loadBuffer(bufferData);
         console.log("📋 Track info: [Memory Buffer]");
+      } else {
+         console.error("❌ Invalid track format");
+         return;
       }
 
       await this.player.play();
