@@ -1,5 +1,5 @@
 {
-  "name": "tts_node",
+  "name": "plugin-b",
   "type": "module",
   "private": true,
   "module": "src/main.ts",

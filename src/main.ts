@@ -1,15 +1,8 @@
 import { RuleBuilder, RuleEngine, ActionRegistry, ExpressionEngine,TriggerLoader } from 'trigger_system/node';
 import { TTSService } from "./services/audio"; 
 import { BasePluginManager } from "./services/plugin";
-
-import * as fs from "fs";
 import * as path from "path";
-function ensureDir(Path:string){
-    if (!fs.existsSync(Path)) {
-        fs.mkdirSync(Path, { recursive: true });
-    }
-    return fs.existsSync(Path);
-}
+import { ensureDir } from "./utils/filepath";
 const testdata = {
     comment:'¡Hola! 😊 ¿Cómo estás? 🤔  🌐 🌍🌎🌏',
     uniqueId:"1234567890",

@@ -1,8 +1,8 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
-import { TTSService } from "./audio";
+import { TTSService } from "../src/services/audio";
 import { ActionRegistry } from "trigger_system/node";
-import { ttsSystem } from "./cleaner";
-import { PlaylistManager } from "./playlist";
+import { ttsSystem } from "../src/services/cleaner";
+import { PlaylistManager } from "../src/services/playlist";
 
 export class TTSPlugin implements IPlugin {
   name = "tts-service";
@@ -57,7 +57,7 @@ export class TTSPlugin implements IPlugin {
     if (lastMessage) {
         log.info(`[TTSPlugin] Last processed message: ${lastMessage}`);
     }
-
+    
     const registry = ActionRegistry.getInstance();
 
     registry.register("TTS", async (action, ctx) => {
@@ -83,8 +83,15 @@ export class TTSPlugin implements IPlugin {
         );
         this.audioFiles.push(ttsdata);
         await this.playlist.loadTracks(this.audioFiles.map((file) => file.fileBuffer));
- 
-        await this.playlist.playCurrentTrack(); 
+        const playlistStatus = this.playlist.getStatus();
+        if (playlistStatus.isPlaying) {
+            // Already playing, just add to queue
+        //    context.log.info("[TTS] Adding to existing playback queue");
+        } else {
+            await this.playlist.playCurrentTrack(); 
+        //   context.log.info("[TTS] Starting new playback");
+        }
+        
        
  
         return result?.cleanedText;

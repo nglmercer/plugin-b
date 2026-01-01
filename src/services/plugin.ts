@@ -3,7 +3,7 @@ import { ActionRegistry, RuleEngine } from "trigger_system/node";
 import { join } from "node:path";
 import { ActionRegistryPlugin } from "./RegisterPlugin";
 import { RuleTesterPlugin } from "../../plugins/TesterPlugin";
-import { TTSPlugin } from "./TTSPlugin";
+import { ensureDir } from "../utils/filepath";
 
 /**
  * Gestor de plugins personalizado para TTS
@@ -20,7 +20,6 @@ export class BasePluginManager extends PluginManager {
     // Registrar los plugins core automáticamente
     this.register(new ActionRegistryPlugin());
     this.register(new RuleTesterPlugin());
-    this.register(new TTSPlugin());
     console.log("📦 BasePluginManager: Plugins ActionRegistry y RuleTester registrados");
   }
 
@@ -29,6 +28,7 @@ export class BasePluginManager extends PluginManager {
    */
   async loadDefaultPlugins() {
     const pluginsDir = join(process.cwd(), "plugins");
+    await ensureDir(pluginsDir);
     await this.loadPluginsFromDirectory(pluginsDir);
     return this.listPlugins();
   }

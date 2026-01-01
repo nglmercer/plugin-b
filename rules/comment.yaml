@@ -15,9 +15,17 @@
       - field: ${globals.clean(data.comment)}
         operator: NOT_IN
         value: ["", null, undefined]
+      
+      # si es un comentario corto
+      - field: ${globals.clean(data.comment).length}
+        operator: GT
+        value: 3
   do:
     mode: SEQUENCE
     actions:
       - type: TTS
         params:
           message: ${globals.clean(data.comment)}
+      - type: log
+        params:
+          message: "Processed comment: ${globals.clean(data.comment)}"

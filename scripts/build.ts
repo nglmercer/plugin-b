@@ -1,21 +1,20 @@
 const targets = [
-  { name: "Windows x64", target: "bun-windows-x64", outfile: "./dist/tts_node.exe" },
-  { name: "Linux x64", target: "bun-linux-x64", outfile: "./dist/tts_node-linux" },
-  { name: "Linux ARM64", target: "bun-linux-arm64", outfile: "./dist/tts_node-linux-arm64" },
-  { name: "macOS ARM64", target: "bun-darwin-arm64", outfile: "./dist/tts_node-mac" },
-  { name: "macOS x64", target: "bun-darwin-x64", outfile: "./dist/tts_node-mac-x64" },
+  { name: "Windows x64", outfile: "./dist/tts_node.exe" },
+  { name: "Linux x64", outfile: "./dist/tts_node-linux" },
+  { name: "Linux ARM64", outfile: "./dist/tts_node-linux-arm64" },
+  { name: "macOS ARM64", outfile: "./dist/tts_node-mac" },
+  { name: "macOS x64", outfile: "./dist/tts_node-mac-x64" },
 ] as const;
 
 console.log("🚀 Starting multi-platform build...");
 
-for (const { name, target, outfile } of targets) {
+for (const { name, outfile } of targets) {
   console.log(`📦 Building for ${name}...`);
-  if (!target)continue;
   try {
     const result = await Bun.build({
       entrypoints: ["./src/main.ts"],
+      target: "bun",
       compile: {
-        target,
         outfile,
       },
     });

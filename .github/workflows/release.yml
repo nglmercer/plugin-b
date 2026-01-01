@@ -27,6 +27,9 @@ jobs:
       - name: Build plugins
         run: bun run build:plugins
 
+      - name: Zip plugins
+        run: cd dist && zip -r ../plugins.zip plugins
+
       - name: Compile binaries
         run: bun run build
 
@@ -39,6 +42,6 @@ jobs:
             dist/tts_node-linux-arm64
             dist/tts_node-mac
             dist/tts_node-mac-x64
-            dist/plugins/*
+            plugins.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
