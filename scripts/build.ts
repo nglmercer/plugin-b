@@ -1,9 +1,9 @@
 const targets = [
-  { name: "Windows x64", outfile: "./dist/tts_node.exe" },
-  { name: "Linux x64", outfile: "./dist/tts_node-linux" },
-  { name: "Linux ARM64", outfile: "./dist/tts_node-linux-arm64" },
-  { name: "macOS ARM64", outfile: "./dist/tts_node-mac" },
-  { name: "macOS x64", outfile: "./dist/tts_node-mac-x64" },
+  { name: "Windows x64", outfile: "./dist/plugin-b.exe" },
+  { name: "Linux x64", outfile: "./dist/plugin-b-linux" },
+  { name: "Linux ARM64", outfile: "./dist/plugin-b-linux-arm64" },
+  { name: "macOS ARM64", outfile: "./dist/plugin-b-mac" },
+  { name: "macOS x64", outfile: "./dist/plugin-b-mac-x64" },
 ] as const;
 
 console.log("🚀 Starting multi-platform build...");

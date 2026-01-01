@@ -37,11 +37,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/tts_node.exe
-            dist/tts_node-linux
-            dist/tts_node-linux-arm64
-            dist/tts_node-mac
-            dist/tts_node-mac-x64
+            dist/plugin-b.exe
+            dist/plugin-b-linux
+            dist/plugin-b-linux-arm64
+            dist/plugin-b-mac
+            dist/plugin-b-mac-x64
             plugins.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
