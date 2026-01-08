@@ -3,11 +3,11 @@ import { TTSService } from "./services/audio";
 import { BasePluginManager } from "./services/plugin";
 import * as path from "path";
 import { ensureDir } from "./utils/filepath";
-const testdata = {
+/* const testdata = {
     comment:'¡Hola! 😊 ¿Cómo estás? 🤔  🌐 🌍🌎🌏',
     uniqueId:"1234567890",
     nickname:"test"
-}
+} */
 // const tts = new TTSService("./output"); // Moved to plugin
 const manager = new BasePluginManager();
 

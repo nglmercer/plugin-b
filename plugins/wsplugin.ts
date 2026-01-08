@@ -1,4 +1,4 @@
-import type { IPlugin, PluginContext } from "bun_plugins";
+/* import type { IPlugin, PluginContext } from "bun_plugins";
 import type { ActionRegistry } from "trigger_system/node";
 import { validate } from "./helpers";
 export interface ActionRegistryApi {
@@ -17,20 +17,8 @@ export class wsplugin implements IPlugin {
   }
 
   onLoad(context: PluginContext): void {
-    //const registryPlugin = context.manager.getPlugin("action-registry");
-    //context.emit('ws',{message:"hola"})
-/*     if (registryPlugin?.getSharedApi) {
-      const api = registryPlugin.getSharedApi() as ActionRegistryApi;
-      
-      // Registrar acción
-      api.registry.register("ws", (action, ctx) => {
-        console.log("[ws 123123123412]", action, ctx);
-        return "ws";
-      });
-
-    } */
-    const testerPlugin = context.manager.getPlugin("rule-tester");
-    const tester = testerPlugin?.getSharedApi ? (testerPlugin.getSharedApi() as any) : null;
+    const tester = context.manager.getPlugin("rule-tester");
+    if (!tester)return;
     // Access the exposed engine from the manager
     const engine = (context.manager as any).engine;
     
@@ -70,4 +58,4 @@ export class wsplugin implements IPlugin {
 const ws = new WebSocket("ws://localhost:3000");
 ws.onopen = () => {
   ws.send("Hello");
-};
+}; */

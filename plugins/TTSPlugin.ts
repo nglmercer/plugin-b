@@ -41,7 +41,7 @@ export class TTSPlugin implements IPlugin {
   }
   
   async onLoad(context: PluginContext) {
-    const { storage, log } = context;
+    const { storage, log, getPlugin } = context;
     console.log(`${this.name} initialized`);
     const allVoices = await this.getOrCreateVoices(storage, "voices", []);
     if (!allVoices || allVoices.length === 0) {
@@ -92,8 +92,6 @@ export class TTSPlugin implements IPlugin {
         //   context.log.info("[TTS] Starting new playback");
         }
         
-       
- 
         return result?.cleanedText;
     });
 
