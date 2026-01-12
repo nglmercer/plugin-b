@@ -15,9 +15,6 @@
     "outDir": "dist",
     "rootDir": ".",
     "baseUrl": ".",
-    "paths": {
-      "bun_plugins/plugin-types": ["./plugin-types"]
-    },
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -36,7 +33,6 @@
 
     // Some stricter flags (disabled by default)
     "types": ["bun"],
-    "typeRoots": ["./node_modules/@types", "./plugin-types"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "plugins/"],
 }

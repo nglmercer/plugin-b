@@ -1,15 +1,26 @@
 import { definePlugin, PluginContext } from "bun_plugins";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
-
+import { connect } from "./tiktok/websocket";
 // Referencia global al proceso webview para poder controlarlo
 let webviewProcess: ChildProcess | null = null;
-
+const logsMap = {
+    closed: 'closed webview process',
+    error: 'error webview',
+    onUnload: 'on unload plugin',
+    started: 'started webview process',
+    closing: 'closing webview process',
+} as const;
+const Tiktok = {
+    logged: 'tikfinity_logged',
+    msg: 'tikfinity_msg',
+    Payload: 'TikFinity_PAYLOAD:'
+} as const;
 export default definePlugin({
     name: "tikfinity",
     version: "1.0.0",
     onLoad: async (context: PluginContext) => {
-        console.log("🔌 Iniciando captura de credenciales TikFinity...");
+        console.log(logsMap.started);
 
         // Ruta al script del proceso webview
         const webviewScriptPath = path.join(__dirname, '../scripts/tikfinity-webview.ts');
@@ -28,17 +39,16 @@ export default definePlugin({
         if (webviewProcess.stdout) {
             webviewProcess.stdout.on('data', (data) => {
                 const output = data.toString();
-                console.log("📨 Mensaje del proceso webview:", output);
+                console.log(Tiktok.msg, output);
                 
                 // Verificar si es el payload de TikFinity
-                if (output.includes('TikFinity_PAYLOAD:')) {
-                    const payload = output.replace('TikFinity_PAYLOAD:', '').trim();
-                    console.log("✅ Credenciales capturadas con éxito desde proceso separado");
+                if (output.includes(Tiktok.Payload)) {
+                    const payload = output.replace(Tiktok.Payload, '').trim();
+                    console.log(Tiktok.logged);
                     console.log("PAYLOAD:", payload);
-                    
-                    // Aquí puedes procesar el payload como necesites
-                    // Por ejemplo, guardarlo en una variable, enviarlo a un servidor, etc.
-                    
+                    connect(payload, (message) => {
+                        context.emit('tiktok', message);
+                    });                
                     webviewClosed = true;
                 }
             });
@@ -47,30 +57,30 @@ export default definePlugin({
         // Escuchar errores del proceso hijo
         if (webviewProcess.stderr) {
             webviewProcess.stderr.on('data', (data) => {
-                console.error("❌ Error del proceso webview:", data.toString());
+                console.error(logsMap.error, data.toString());
             });
         }
 
         // Manejar el cierre del proceso hijo
         webviewProcess.on('close', (code) => {
-            console.log(`🔚 Proceso webview finalizado con código: ${code}`);
+            console.log(logsMap.closed,code);
             webviewClosed = true;
             webviewProcess = null;
         });
 
         // Manejar errores de spawn
         webviewProcess.on('error', (error) => {
-            console.error("❌ Error al iniciar proceso webview:", error);
+            console.error(logsMap.error, error);
             webviewProcess = null;
         });
 
-        console.log("🚀 Proceso webview iniciado en segundo plano");
+        console.log(logsMap.started);
     },
     onUnload: () => {
-        console.log("tikfinity unloaded");
+        console.log(logsMap.onUnload);
         // Cerramos el proceso webview si aún está activo
         if (webviewProcess) {
-            console.log("🛑 Cerrando proceso webview al descargar el plugin...");
+            console.log(logsMap.closing);
             webviewProcess.kill();
             webviewProcess = null;
         }
