@@ -2,6 +2,7 @@ import { definePlugin, PluginContext } from "bun_plugins";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
 import { connect } from "./tiktok/websocket";
+import { parseSocketIo42Message } from "../utils/parsejson";
 // Referencia global al proceso webview para poder controlarlo
 let webviewProcess: ChildProcess | null = null;
 const logsMap = {
@@ -47,8 +48,15 @@ export default definePlugin({
                     console.log(Tiktok.logged);
                     console.log("PAYLOAD:", payload);
                     connect(payload, (message) => {
-                        //console.log("tiktok message:", message);
-                        context.emit('tiktok', message);
+                        // Por defecto: procesar mensaje raw y emitir como { eventName, data }
+                        const data = parseSocketIo42Message(message);
+                        const eventName = data?.eventName || 'generic';
+                        const eventData = data?.data || message;
+                        
+                        context.emit('tiktok', {
+                            eventName,
+                            data: eventData
+                        });
                     });                
                     webviewClosed = true;
                 }

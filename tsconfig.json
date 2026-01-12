@@ -34,5 +34,6 @@
     // Some stricter flags (disabled by default)
     "types": ["bun"],
   },
-  "include": ["src/**/*", "plugins/"],
+  "include": ["src/**/*", "plugins/", "utils"],
+  "exclude": ["node_modules", "dist","*.test.ts"]
 }

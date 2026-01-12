@@ -3,7 +3,7 @@ import { ActionRegistry, RuleEngine } from "trigger_system/node";
 import { join } from "node:path";
 import { ActionRegistryPlugin } from "./RegisterPlugin";
 import { RuleTesterPlugin } from "../../plugins/TesterPlugin";
-import { ensureDir } from "../utils/filepath";
+import { ensureDir } from "../../utils/filepath";
 import { webclass } from "./webview";
 /**
  * Gestor de plugins personalizado para TTS

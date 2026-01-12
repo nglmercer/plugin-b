@@ -1,5 +1,5 @@
 import type { PluginContext } from "bun_plugins";
-import type { TTSService } from "../services/audio";
+import type { TTSService } from "../src/services/audio";
 
 /**
  * Helper function para obtener plugins con tipado estático
