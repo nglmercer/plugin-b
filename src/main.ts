@@ -1,6 +1,6 @@
 import { RuleEngine, ActionRegistry, TriggerLoader } from 'trigger_system/node';
 import { BasePluginManager } from "./services/plugin";
-import { ensureDir } from "./utils/filepath";
+import { ensureDir } from "../utils/filepath";
 import * as path from "path";
 const manager = new BasePluginManager();
 
@@ -8,12 +8,27 @@ async function main() {
     const registry = ActionRegistry.getInstance();
     await manager.loadDefaultPlugins();
     const engine = manager.engine;
-    
-    // El plugin siempre emite { eventName, data } (datos raw por defecto)
-    manager.on('tiktok', ({ eventName, data }) => {
-        console.log(`🎯 Event received: ${eventName}`);
-        engine.processEventSimple(eventName, data);
+    const Platforms = {
+        youtube: 'youtube',
+        twitch: 'twitch',
+        tiktok: 'tiktok',
+        kick: 'kick'
+    }
+    Object.keys(Platforms).forEach(platform => {
+        manager.on(platform, ({ eventName, data }) => {
+            if (!eventName || !data) {
+                return;
+            }
+            engine.processEventSimple(eventName, data);
+        });
     });
+    // El plugin siempre emite { eventName, data } (datos raw por defecto)
+    /* manager.on('tiktok', ({ eventName, data }) => {
+        if (!eventName || !data) {
+            return;
+        }
+        engine.processEventSimple(eventName, data);
+    }); */
     const rulesDir = path.resolve(process.cwd(),"rules");
     const result = ensureDir(rulesDir);
     //watcher se ejecuta despues o demora al inicializar que los demas eventos

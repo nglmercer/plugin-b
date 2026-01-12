@@ -2,7 +2,7 @@ import { definePlugin, PluginContext } from "bun_plugins";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
 import { connect } from "./tiktok/websocket";
-import { parseSocketIo42Message } from "../src/utils/parsejson";
+import { parseSocketIo42Message } from "../utils/parsejson";
 // Referencia global al proceso webview para poder controlarlo
 let webviewProcess: ChildProcess | null = null;
 const logsMap = {
