@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "module": "src/main.ts",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "scripts": {
     "build": "bun run build:core && bun run build:plugins",
     "build:core": "bun run ./scripts/build_core.ts",
@@ -12,7 +12,9 @@
     "start": "bun run ./src/main.ts"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bun": "latest",
+    "archiver": "^7.0.1",
     "ts-node": "^10.9.2"
   },
   "peerDependencies": {

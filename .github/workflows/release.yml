@@ -35,10 +35,7 @@ jobs:
 
       - name: Build Plugins (Linux only)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          bun run build:plugins
-          cd dist
-          zip -r ../plugins.zip plugins
+        run: bun run build:plugins
 
       - name: Upload Linux Artifacts
         if: matrix.os == 'ubuntu-latest'
@@ -47,7 +44,7 @@ jobs:
           name: artifacts-linux
           path: |
             dist/plugin-b-linux*
-            plugins.zip
+            dist/plugins.zip
 
       - name: Upload Windows Artifacts
         if: matrix.os == 'windows-latest'

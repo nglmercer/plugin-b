@@ -49,7 +49,7 @@ async function main() {
     for (const { name, target, outfile } of targetsToBuild) {
         console.log(`📦 Building for ${name} (${target})...`);
         try {
-            await $`bun build --compile --target=${target} ./src/main.ts --outfile ${outfile}`;
+            await $`bun build --compile --sourcemap=inline --target=${target} ./src/main.ts --outfile ${outfile}`;
             console.log(`   ✅ Success: ${outfile}`);
         } catch (error) {
             console.error(`   ❌ Failed to build for ${name}:`);

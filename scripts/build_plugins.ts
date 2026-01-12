@@ -1,4 +1,4 @@
-import { readdir, mkdir, copyFile } from "node:fs/promises";
+import { readdir, mkdir, copyFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 
@@ -76,6 +76,46 @@ async function buildPlugins() {
           console.log(`   copy ${file} -> ${SCRIPTS_DEST}`);
       }
   }
+  // Zip the plugins and scripts directories
+  console.log("📦 Zipping plugins and scripts...");
+  await zipDirectories(DIST_PLUGINS_DIR, SCRIPTS_DEST, "dist/plugins.zip");
+}
+
+async function zipDirectories(pluginsDir: string, scriptsDir: string, outFile: string) {
+  return new Promise<void>((resolve, reject) => {
+    // dynamically import archiver to avoid issues if not installed (though we installed it)
+    // or just import at top level. User said "implementar", implies I can add code.
+    // I already installed it.
+    const archiver = require("archiver");
+    const { createWriteStream } = require("node:fs");
+
+    const output = createWriteStream(outFile);
+    const archive = archiver("zip", {
+      zlib: { level: 9 } // Sets the compression level.
+    });
+
+    output.on("close", function() {
+      console.log(archive.pointer() + " total bytes");
+      console.log("archiver has been finalized and the output file descriptor has closed.");
+      resolve();
+    });
+
+    archive.on("error", function(err: any) {
+      reject(err);
+    });
+
+    archive.pipe(output);
+
+    // append files from a directory, putting its contents at the root of archive
+    if (existsSync(pluginsDir)) {
+        archive.directory(pluginsDir, "plugins");
+    }
+    if (existsSync(scriptsDir)) {
+        archive.directory(scriptsDir, "scripts");
+    }
+
+    archive.finalize();
+  });
 }
 
 if (import.meta.main) {
