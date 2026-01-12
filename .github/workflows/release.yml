@@ -10,8 +10,14 @@ permissions:
 
 jobs:
   build:
-    name: Build binaries
-    runs-on: ubuntu-latest
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      BUILD_ONLY_NATIVE: true
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,24 +30,60 @@ jobs:
       - name: Install dependencies
         run: bun i
 
-      - name: Build plugins
-        run: bun run build:plugins
+      - name: Build Core
+        run: bun run build:core
 
-      - name: Zip plugins
-        run: cd dist && zip -r ../plugins.zip plugins
+      - name: Build Plugins (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          bun run build:plugins
+          cd dist
+          zip -r ../plugins.zip plugins
 
-      - name: Compile binaries
-        run: bun run build
+      - name: Upload Linux Artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux
+          path: |
+            dist/plugin-b-linux*
+            plugins.zip
+
+      - name: Upload Windows Artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-windows
+          path: dist/plugin-b.exe
+
+      - name: Upload Mac Artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-mac
+          path: dist/plugin-b-mac*
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Display Downloaded Files
+        run: ls -R all-artifacts
+
+      - name: Flatten Artifacts
+        run: |
+          mkdir release_assets
+          find all-artifacts -type f -not -path "*/.*" -exec cp {} release_assets/ \;
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/plugin-b.exe
-            dist/plugin-b-linux
-            dist/plugin-b-linux-arm64
-            dist/plugin-b-mac
-            dist/plugin-b-mac-x64
-            plugins.zip
+          files: release_assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

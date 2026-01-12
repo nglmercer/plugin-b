@@ -25,8 +25,9 @@ async function main() {
   }
 
   // 2. Always ensure Windows target is built (Primary Deliverable), unless it was already added as native
+  // OR if we are explicitly told to only build native (e.g. in a CI matrix)
   const windowsTarget = allTargets.find(t => t.target === "bun-windows-x64");
-  if (windowsTarget && !targetsToBuild.some(t => t.target === windowsTarget.target)) {
+  if (!process.env.BUILD_ONLY_NATIVE && windowsTarget && !targetsToBuild.some(t => t.target === windowsTarget.target)) {
     targetsToBuild.push(windowsTarget);
   }
   
@@ -37,11 +38,12 @@ async function main() {
   //        if (!targetsToBuild.includes(t)) targetsToBuild.push(t);
   //    }
   // }
-
-  console.log("🚀 Starting core build process...");
-  console.log(`ℹ️  Host System: ${currentPlatform} (${currentArch})`);
-  console.log(`🎯 Active Targets: ${targetsToBuild.map(t => t.name).join(", ")}`);
-
+  console.log("build",{
+    currentPlatform,
+    currentArch,
+    targetsToBuild,
+    targets: targetsToBuild.map(t => t.name).join(", ")
+  })
     let hasErrors = [];
     
     for (const { name, target, outfile } of targetsToBuild) {
