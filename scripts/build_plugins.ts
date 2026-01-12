@@ -1,4 +1,4 @@
-import { readdir, mkdir } from "node:fs/promises";
+import { readdir, mkdir, copyFile } from "node:fs/promises";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 
@@ -46,6 +46,35 @@ async function buildPlugins() {
     console.error("Plugin build failed");
     console.error(results.logs);
     process.exit(1);
+  }
+
+  // Copy helper scripts that are referenced by runtime paths (not imported)
+  // Automatically copy any script in 'scripts/' that isn't a build script.
+  const SCRIPTS_SRC = "scripts";
+  const SCRIPTS_DEST = "dist/scripts";
+  await mkdir(SCRIPTS_DEST, { recursive: true });
+
+  const allScripts = await readdir(SCRIPTS_SRC);
+  
+  // Exclude known build scripts. We assume any other .ts/.js file in scripts/ is a runtime helper.
+  const runtimeScripts = allScripts.filter(file => {
+      // Only copy typescript/javascript files
+      if (!file.endsWith('.ts') && !file.endsWith('.js')) return false;
+      
+      // Exclude build scripts (convention: start with 'build')
+      if (file.startsWith('build')) return false;
+      
+      return true;
+  });
+
+  if (runtimeScripts.length > 0) {
+      console.log(`📂 Copying ${runtimeScripts.length} runtime scripts...`);
+      for (const file of runtimeScripts) {
+          const src = join(SCRIPTS_SRC, file);
+          const dest = join(SCRIPTS_DEST, file);
+          await copyFile(src, dest);
+          console.log(`   copy ${file} -> ${SCRIPTS_DEST}`);
+      }
   }
 }
 

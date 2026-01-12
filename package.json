@@ -4,11 +4,11 @@
   "private": true,
   "module": "src/main.ts",
   "scripts": {
-    "build": "bun run ./scripts/build.ts",
+    "build": "bun run build:core && bun run build:plugins",
+    "build:core": "bun run ./scripts/build_core.ts",
     "build:plugins": "bun run ./scripts/build_plugins.ts",
-    "compile": "bun run ./scripts/build.ts",
-    "start": "bun run ./src/main.ts",
-    "dev": "bun --watch ./src/main.ts"
+    "dev": "bun --watch ./src/main.ts",
+    "start": "bun run ./src/main.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

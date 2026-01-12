@@ -454,6 +454,6 @@ export const ArktypeSchemas = {
    * Esquema para objetos con propiedades requeridas
    */
   requiredObject: (requiredKeys: string[]) => type({
-    ...Object.fromEntries(requiredKeys.map(key => [key, 'any']))
+    ...Object.fromEntries(requiredKeys.map(key => [key, 'unknown']))
   })
 };
