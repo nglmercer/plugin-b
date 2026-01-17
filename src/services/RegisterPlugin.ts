@@ -31,7 +31,7 @@ class HelperRegistry {
 export class ActionRegistryPlugin implements IPlugin {
   name = "action-registry";
   version = "1.0.0";
-  
+
   private get registry() {
     return ActionRegistry.getInstance();
   }
@@ -47,7 +47,7 @@ export class ActionRegistryPlugin implements IPlugin {
 
   onLoad(context: PluginContext) {
     console.log(`${this.name} v${this.version} onLoad`);
-    
+
     // Registrar helpers básicos por defecto
     this.helperRegistry.register("last", () => {
       const history = ttsSystem.getMessageHistory();
@@ -72,7 +72,10 @@ export class ActionRegistryPlugin implements IPlugin {
       get: registry.get.bind(registry),
       registry: registry,
       registerHelper: helperRegistry.register.bind(helperRegistry),
-      getHelpers: helperRegistry.getHelpers.bind(helperRegistry)
+      getHelpers: helperRegistry.getHelpers.bind(helperRegistry),
     };
+  }
+  get Helpers() {
+    return this.helperRegistry.getHelpers();
   }
 }
