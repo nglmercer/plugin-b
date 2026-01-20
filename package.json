@@ -21,10 +21,13 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "ai": "^6.0.42",
+    "@ai-sdk/deepseek": "^2.0.8",
+    "@ai-sdk/openai": "^3.0.12",
+    "arktype": "^2.1.29",
     "@andresaya/edge-tts": "^1.8.0",
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.23.0",
-    "arktype": "^2.1.29",
     "bun_plugins": "1.2.5",
     "cheerio": "^1.1.2",
     "install": "^0.13.0",
