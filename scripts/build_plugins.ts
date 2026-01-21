@@ -37,6 +37,9 @@ async function buildPlugins() {
     target: "bun",
     minify: true,
     sourcemap: "external", // Good for debugging
+    naming: {
+      asset: "[name].[ext]",
+    },
   });
 
   if (results.success) {
