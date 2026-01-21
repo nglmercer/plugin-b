@@ -1,14 +1,3 @@
-/**
- * DESCARGO DE RESPONSABILIDAD (DISCLAIMER):
- * 
- * Este módulo de limpieza ("Cleaner") se proporciona "tal cual", sin garantías de ningún tipo.
- * El uso de este software es bajo su propio riesgo. El autor no se hace responsable de 
- * cualquier daño, pérdida de datos o consecuencias derivadas del procesamiento de mensajes.
- * 
- * Se recomienda que la lógica de negocio y validaciones críticas se realicen en las
- * reglas de configuración (YAML) para mantener la transparencia del sistema.
- */
-
 import { StringDetector } from 'string-dac';
 
 const detector = new StringDetector();

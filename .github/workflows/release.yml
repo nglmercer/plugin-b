@@ -37,6 +37,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: bun run build:plugins
 
+      - name: Set executable permissions (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: chmod +x dist/plugin-b-linux*
+
       - name: Upload Linux Artifacts
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
@@ -52,6 +56,10 @@ jobs:
         with:
           name: artifacts-windows
           path: dist/plugin-b.exe
+
+      - name: Set executable permissions (Mac only)
+        if: matrix.os == 'macos-latest'
+        run: chmod +x dist/plugin-b-mac*
 
       - name: Upload Mac Artifacts
         if: matrix.os == 'macos-latest'
