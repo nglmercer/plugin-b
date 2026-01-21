@@ -7,18 +7,19 @@ import * as path from "path";
  * - En ejecutable compilado: retorna el directorio donde está el ejecutable
  */
 function getBaseDir(): string {
-    // Bun.main contiene la ruta del archivo principal ejecutado
-    // En un ejecutable compilado, apunta al ejecutable mismo
-    if (Bun.main) {
-        const mainPath = Bun.main;
-        // Si termina en .exe o no tiene extensión (binario de Linux/Mac), es un ejecutable
-        const isCompiled = mainPath.endsWith('.exe') || 
-                          (!path.extname(mainPath) && !mainPath.includes('node_modules'));
-        
-        if (isCompiled) {
-            // Retornar el directorio del ejecutable
-            return path.dirname(mainPath);
-        }
+    // process.execPath contiene la ruta del ejecutable de Bun
+    // En un ejecutable compilado con `bun build --compile`, apunta al ejecutable mismo
+    const execPath = process.execPath;
+    
+    // Detectar si estamos en un ejecutable compilado
+    // En desarrollo, execPath apunta a bun (/usr/bin/bun o similar)
+    // En compilado, apunta al ejecutable del proyecto
+    const isBunRuntime = execPath.includes('/bun') || execPath.includes('\\bun');
+    
+    if (!isBunRuntime) {
+        // Estamos en un ejecutable compilado
+        // Retornar el directorio donde está el ejecutable
+        return path.dirname(execPath);
     }
     
     // En desarrollo, usar process.cwd()
