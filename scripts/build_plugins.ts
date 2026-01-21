@@ -68,14 +68,26 @@ async function buildPlugins() {
   });
 
   if (runtimeScripts.length > 0) {
-      console.log(`📂 Copying ${runtimeScripts.length} runtime scripts...`);
-      for (const file of runtimeScripts) {
-          const src = join(SCRIPTS_SRC, file);
-          const dest = join(SCRIPTS_DEST, file);
-          await copyFile(src, dest);
-          console.log(`   copy ${file} -> ${SCRIPTS_DEST}`);
+      console.log(`📦 Building ${runtimeScripts.length} runtime scripts...`);
+      // Build runtime scripts instead of copying source
+      const scriptBuildResults = await Bun.build({
+          entrypoints: runtimeScripts.map(e => join(SCRIPTS_SRC, e)),
+          outdir: SCRIPTS_DEST,
+          target: "bun",
+          minify: true,
+      });
+
+      if (scriptBuildResults.success) {
+          console.log(`   ✅ Built scripts to ${SCRIPTS_DEST}`);
+      } else {
+          console.error("   ❌ Failed to build runtime scripts");
+          console.error(scriptBuildResults.logs);
       }
   }
+
+  // Copy native helper modules (.node) with original names to ensure they can be required correctly
+  //await copyNativeModules(DIST_PLUGINS_DIR);
+  //await copyNativeModules(SCRIPTS_DEST);
   // Zip the plugins and scripts directories
   console.log("📦 Zipping plugins and scripts...");
   await zipDirectories(DIST_PLUGINS_DIR, SCRIPTS_DEST, "dist/plugins.zip");
@@ -116,6 +128,75 @@ async function zipDirectories(pluginsDir: string, scriptsDir: string, outFile: s
 
     archive.finalize();
   });
+}
+
+/**
+ * Copies .node files from node_modules to the destination.
+ * Bun build renames assets with a hash, breaking libraries that expect specific filenames (like miniaudio_node).
+ * We manually copy them to ensure they are available with the expected names.
+ */
+// optional, this force copy modules, check and verify, not required forever only when you need to update modules
+export async function copyNativeModules(infoDir: string) {
+    // Dynamically find packages with .node files in their root
+    const packages = await getNativeModules();
+    
+    if (packages.length > 0) {
+        console.log(`🔧 Patching native modules in ${infoDir} for: ${packages.join(', ')}`);
+    }
+
+    for (const pkg of packages) {
+        // Try to find the package path
+        try {
+            // We look in node_modules
+            const pkgPath = join(process.cwd(), "node_modules", pkg);
+            if (!existsSync(pkgPath)) continue;
+
+            const files = await readdir(pkgPath);
+            const nodeFiles = files.filter(f => f.endsWith(".node"));
+            
+            for (const file of nodeFiles) {
+                const src = join(pkgPath, file);
+                const dest = join(infoDir, file);
+                await copyFile(src, dest);
+                console.log(`   ├── Copied native binding: ${file}`);
+            }
+        } catch (e) {
+            console.warn(`   ⚠️ Could not copy native modules for ${pkg}:`, e);
+        }
+    }
+}
+
+/**
+ * Scans package.json dependencies to find those that contain .node files in their root.
+ */
+async function getNativeModules(): Promise<string[]> {
+    try {
+        const pkgFile = Bun.file("package.json");
+        if (!await pkgFile.exists()) return [];
+        
+        const pkg = await pkgFile.json();
+        const deps = Object.keys(pkg.dependencies || {});
+        const nativeDeps: string[] = [];
+
+        for (const dep of deps) {
+            const depPath = join(process.cwd(), "node_modules", dep);
+            if (existsSync(depPath)) {
+                try {
+                    const files = await readdir(depPath);
+                    // Check if any file in the root ends with .node
+                    if (files.some(f => f.endsWith(".node"))) {
+                        nativeDeps.push(dep);
+                    }
+                } catch {
+                    // Ignore errors reading directory
+                }
+            }
+        }
+        return nativeDeps;
+    } catch (e) {
+        console.error("Failed to scan native modules", e);
+        return [];
+    }
 }
 
 if (import.meta.main) {

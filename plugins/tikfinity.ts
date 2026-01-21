@@ -26,7 +26,10 @@ export default definePlugin({
         // Ruta al script del proceso webview
         // En desarrollo: scripts/tikfinity-webview.ts
         // En producción (compilado): dist/scripts/tikfinity-webview.ts (relativo al ejecutable)
-        const webviewScriptPath = path.join(getBaseDir(), 'scripts/tikfinity-webview.ts');
+        const baseScript = path.join(getBaseDir(), 'scripts/tikfinity-webview.ts');
+        const webviewScriptPath = await Bun.file(baseScript).exists() 
+            ? baseScript 
+            : path.join(getBaseDir(), 'scripts/tikfinity-webview.js');
         
         // Iniciamos el proceso hijo con Bun
         // Bun puede ejecutar TypeScript directamente sin necesidad de compilar
