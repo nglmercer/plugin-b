@@ -1,6 +1,6 @@
 import { RuleEngine, ActionRegistry, TriggerLoader } from "trigger_system/node";
 import { BasePluginManager } from "./services/plugin";
-import { ensureDir } from "../utils/filepath";
+import { ensureDir, getBaseDir } from "../utils/filepath";
 import { ActionRegistryPlugin } from "./services/RegisterPlugin";
 import * as path from "path";
 const manager = new BasePluginManager();
@@ -34,7 +34,7 @@ async function main() {
         }
         engine.processEventSimple(eventName, data);
     }); */
-  const rulesDir = path.resolve(process.cwd(), "rules");
+  const rulesDir = path.resolve(getBaseDir(), "rules");
   const result = ensureDir(rulesDir);
   //watcher se ejecuta despues o demora al inicializar que los demas eventos
   const watcher = TriggerLoader.watchRules(rulesDir, async (newRules) => {
