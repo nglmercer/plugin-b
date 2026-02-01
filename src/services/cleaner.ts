@@ -69,10 +69,10 @@ export const CleanerUtils = {
 };
 
 /**
- * ttsSystem - Adaptador simplificado para mantener compatibilidad.
+ * TTScleaner - Adaptador simplificado para mantener compatibilidad.
  * Encapsula las utilidades en un objeto similar al original.
  */
-export const ttsSystem = {
+export const TTScleaner = {
   /**
    * Procesa un mensaje para el sistema TTS.
    */

@@ -1,6 +1,6 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { ActionRegistry } from "trigger_system/node";
-import { ttsSystem } from "./cleaner";
+import { TTScleaner } from "./cleaner";
 
 /**
  * Registro simple para funciones auxiliares (helpers/globals)
@@ -50,13 +50,13 @@ export class ActionRegistryPlugin implements IPlugin {
 
     // Registrar helpers básicos por defecto
     this.helperRegistry.register("last", () => {
-      const history = ttsSystem.getMessageHistory();
+      const history = TTScleaner.getMessageHistory();
       const lastItem = history[history.length - 1];
       return lastItem ? lastItem.cleanedText : "";
     });
 
     this.helperRegistry.register("clean", (t: any) => {
-      return ttsSystem.cleanOnly(String(t || ""));
+      return TTScleaner.cleanOnly(String(t || ""));
     });
   }
 

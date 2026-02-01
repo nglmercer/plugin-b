@@ -1,7 +1,7 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
-import { TTSService } from "../src/services/audio";
+import { TTSService } from "./tts/index";
 import { ActionRegistry } from "trigger_system/node";
-import { ttsSystem } from "../src/services/cleaner";
+import { TTScleaner } from "../src/services/cleaner";
 import { PlaylistManager } from "../src/services/playlist";
 
 export class TTSPlugin implements IPlugin {
@@ -48,7 +48,7 @@ export class TTSPlugin implements IPlugin {
         await storage.set("voices", await this.ttsService.getVoices());
     }
     // Load configuration with defaults
-    const defaults = { volume: 100, voice: 'es-AR-ElenaNeural', rate: '0%' };
+    const defaults = { volume: 100, voice: 'F1', rate: '0%' };
     const config = await this.getOrCreateConfig(storage, "ttsConfig", defaults);
     log.info(`[TTSPlugin] Config loaded:`, config);
 
@@ -63,7 +63,7 @@ export class TTSPlugin implements IPlugin {
     registry.register("TTS", async (action, ctx) => {
         console.log("[TTS]", action, Object.keys(ctx));
         if (!action.params?.message) return;
-        const result = await ttsSystem.processMessage(String(action.params?.message));
+        const result = await TTScleaner.processMessage(String(action.params?.message));
         if (!result?.cleanedText) return;
 
         // Save last message
@@ -96,7 +96,7 @@ export class TTSPlugin implements IPlugin {
     });
 
     registry.register("lastcomment", async (action, ctx) => {
-        const history = ttsSystem.getMessageHistory();
+        const history = TTScleaner.getMessageHistory();
         const lastItem = history[history.length - 1]; // Fallback to history
         
         // Try getting from storage first for consistency
@@ -104,7 +104,7 @@ export class TTSPlugin implements IPlugin {
 
         console.log("[lastcomment]", action, ctx);
         if (!action.params?.message) return;
-        const result = await ttsSystem.processMessage(String(action.params?.message));
+        const result = await TTScleaner.processMessage(String(action.params?.message));
         if (!result?.cleanedText) return;
         
         // Update storage here too? Or is lastcomment just reading? 

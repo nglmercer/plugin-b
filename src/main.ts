@@ -14,13 +14,15 @@ async function main() {
     twitch: "twitch",
     tiktok: "tiktok",
     kick: "kick",
-  };
+  } as const;
   const registryPlugin = (await manager.getPlugin(
     "action-registry",
   )) as ActionRegistryPlugin;
   const pluginHelpers = registryPlugin.Helpers || {};
   Object.keys(Platforms).forEach((platform) => {
+    console.log("events",platform)
     manager.on(platform, ({ eventName, data }) => {
+      console.log({ eventName, data })
       if (!eventName || !data) {
         return;
       }

@@ -1,11 +1,13 @@
 import { definePlugin, PluginContext } from "bun_plugins";
 import { spawn, ChildProcess } from "child_process";
 import * as path from "path";
-import { connect } from "./tiktok/websocket";
+import { connect, TikTokWebSocket } from "./tiktok/websocket";
 import { parseSocketIo42Message, SocketIoMessage } from "../utils/parsejson";
 import { getBaseDir } from "../utils/filepath";
 // Referencia global al proceso webview para poder controlarlo
 let webviewProcess: ChildProcess | null = null;
+// Referencia a la conexión WebSocket para poder cerrarla limpiamente
+let wsConnection: TikTokWebSocket | null = null;
 const logsMap = {
     closed: 'closed webview process',
     error: 'error webview',
@@ -50,8 +52,18 @@ export default definePlugin({
                 // Verificar si es el payload de TikFinity
                 if (output.includes(Tiktok.Payload)) {
                     const payload = output.replace(Tiktok.Payload, '').trim();
-                    //console.log(Tiktok.logged);
-                    //console.log("PAYLOAD:", payload);
+
+                    // Si ya existe una conexión, no crear otra
+                    if (wsConnection?.isConnected()) {
+                        console.log("⚠️ Conexión WebSocket ya existe, ignorando payload duplicado");
+                        return;
+                    }
+
+                    // Cerrar conexión anterior si existe
+                    if (wsConnection) {
+                        wsConnection.disconnect();
+                    }
+
                     connect(payload, (message) => {
                         // Por defecto: procesar mensaje raw y emitir como { eventName, data }
                         const info = SocketIoMessage(message);
@@ -68,7 +80,10 @@ export default definePlugin({
                             eventName,
                             data: eventData
                         });
-                    });                
+                    }).then(ws => {
+                        wsConnection = ws;
+                    });
+
                     webviewClosed = true;
                 }
             });
@@ -98,6 +113,14 @@ export default definePlugin({
     },
     onUnload: () => {
         console.log(logsMap.onUnload);
+
+        // Cerrar la conexión WebSocket si existe
+        if (wsConnection) {
+            console.log("Cerrando conexión WebSocket...");
+            wsConnection.disconnect();
+            wsConnection = null;
+        }
+
         // Cerramos el proceso webview si aún está activo
         if (webviewProcess) {
             console.log(logsMap.closing);

@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { ActionRegistryPlugin } from "./RegisterPlugin";
 import { RuleTesterPlugin } from "../../plugins/TesterPlugin";
 import { ensureDir, getBaseDir } from "../../utils/filepath";
-import { webclass } from "./webview";
 /**
  * Gestor de plugins personalizado para TTS
  * Extiende PluginManager para asegurar que el ActionRegistryPlugin esté siempre cargado
@@ -20,7 +19,6 @@ export class BasePluginManager extends PluginManager {
     // Registrar los plugins core automáticamente
     this.register(new ActionRegistryPlugin());
     this.register(new RuleTesterPlugin());
-    this.register(new webclass());
     console.log("📦 BasePluginManager: Plugins ActionRegistry y RuleTester registrados");
   }
 
