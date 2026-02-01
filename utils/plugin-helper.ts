@@ -1,5 +1,6 @@
 import type { PluginContext } from "bun_plugins";
-import type { TTSService } from "../src/services/audio";
+import type { TTSService } from "../plugins/tts/index";
+import { PLUGIN_NAMES } from "../src/constants";
 
 /**
  * Helper function para obtener plugins con tipado estático
@@ -13,5 +14,5 @@ export async function getPlugin<T>(context: PluginContext, name: string): Promis
  * Obtiene el servicio TTS con el tipo correcto
  */
 export async function getTTSService(context: PluginContext): Promise<TTSService | undefined> {
-  return await getPlugin<TTSService>(context, "tts-service");
+  return await getPlugin<TTSService>(context, PLUGIN_NAMES.TTS_SERVICE);
 }

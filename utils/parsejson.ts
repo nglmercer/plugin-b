@@ -1,4 +1,8 @@
-import { type } from 'arktype';
+import { type } from "arktype";
+import {
+  ERROR_MESSAGES,
+  TIKTOK_CONSTANTS,
+} from "../src/constants";
 
 /**
  * Interfaz por defecto para el retorno
@@ -23,31 +27,32 @@ export interface ParseResult<T = any> {
  * @param keys - (Opcional) Diccionario para renombrar las llaves de salida
  */
 export function parseSocketIo42Message<
-  T = any, 
-  E extends string = 'eventName', 
-  D extends string = 'data'
+  T = any,
+  E extends string = "eventName",
+  D extends string = "data"
 >(
   message: string,
   keys?: { event: E; data: D }
-): { [K in E]: string } & { [K in D]: T } | null {
-  
+): ({ [K in E]: string } & { [K in D]: T }) | null {
   // Validamos el prefijo del protocolo Socket.io
-  if (!message || !message.startsWith('42')) {
+  if (!message || !message.startsWith(TIKTOK_CONSTANTS.SOCKET_IO_DATA_PREFIX)) {
     return null;
   }
 
   try {
     // Extraemos y parseamos el JSON (saltando el "42")
-    const parsed = JSON.parse(message.substring(2));
+    const parsed = JSON.parse(
+      message.substring(TIKTOK_CONSTANTS.SOCKET_IO_DATA_PREFIX.length)
+    );
 
     if (Array.isArray(parsed) && parsed.length >= 1) {
       // Definimos las llaves que usaremos: las proveídas o las de SocketIoEvent por defecto
-      const eventKey = keys?.event ?? ('eventName' as E);
-      const dataKey = keys?.data ?? ('data' as D);
+      const eventKey = keys?.event ?? ("eventName" as E);
+      const dataKey = keys?.data ?? ("data" as D);
 
       return {
         [eventKey]: parsed[0],
-        [dataKey]: parsed.length > 1 ? parsed[1] : null
+        [dataKey]: parsed.length > 1 ? parsed[1] : null,
       } as { [K in E]: string } & { [K in D]: T };
     }
   } catch (error) {
@@ -56,54 +61,57 @@ export function parseSocketIo42Message<
 
   return null;
 }
+
 export enum SocketIoPacketType {
-  OPEN = '0',
-  CLOSE = '1',
-  PING = '2',
-  PONG = '3',
-  MESSAGE = '4',
-  UPGRADE = '5',
-  NOOP = '6',
+  OPEN = "0",
+  CLOSE = "1",
+  PING = "2",
+  PONG = "3",
+  MESSAGE = "4",
+  UPGRADE = "5",
+  NOOP = "6",
 }
 
 export enum SocketIoMessageType {
-  CONNECT = '0',
-  DISCONNECT = '1',
-  EVENT = '2',
-  ACK = '3',
-  ERROR = '4',
-  BINARY_EVENT = '5',
-  BINARY_ACK = '6',
+  CONNECT = "0",
+  DISCONNECT = "1",
+  EVENT = "2",
+  ACK = "3",
+  ERROR = "4",
+  BINARY_EVENT = "5",
+  BINARY_ACK = "6",
 }
+
 export function SocketIoMessage(message: string) {
   if (!message || message.length < 1) return null;
 
-  const engineType = message[0]; 
+  const engineType = message[0];
   // El socketType solo existe si engineType es '4' (MESSAGE)
-  const socketType = engineType === '4' ? message[1] : undefined;
+  const socketType = engineType === SocketIoPacketType.MESSAGE ? message[1] : undefined;
 
   // Determinamos dónde empieza el JSON real
   // Si es '42', el JSON empieza en el índice 2. Si es '2' (PING), no hay JSON.
-  const payloadOffset = engineType === '4' ? 2 : 1;
+  const payloadOffset = engineType === SocketIoPacketType.MESSAGE ? 2 : 1;
   const payloadRaw = message.substring(payloadOffset);
 
   return {
     engineType,
     socketType,
-    isData: message.startsWith('42'),
-    payloadRaw
+    isData: message.startsWith(TIKTOK_CONSTANTS.SOCKET_IO_DATA_PREFIX),
+    payloadRaw,
   };
 }
+
 /**
  * Parsea un string JSON genérico con manejo de errores
  * @param jsonString - String JSON a parsear
  * @returns ParseResult con el resultado del parseo
  */
 export function parseJson<T = any>(jsonString: string): ParseResult<T> {
-  if (!jsonString || typeof jsonString !== 'string') {
+  if (!jsonString || typeof jsonString !== "string") {
     return {
       success: false,
-      error: 'Input must be a non-empty string'
+      error: ERROR_MESSAGES.PARSE.EMPTY_INPUT,
     };
   }
 
@@ -111,12 +119,12 @@ export function parseJson<T = any>(jsonString: string): ParseResult<T> {
     const parsed = JSON.parse(jsonString);
     return {
       success: true,
-      data: parsed as T
+      data: parsed as T,
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown parsing error'
+      error: error instanceof Error ? error.message : ERROR_MESSAGES.PARSE.UNKNOWN_ERROR,
     };
   }
 }
@@ -132,23 +140,23 @@ export function parseJsonWithSchema<T = any>(
   schema: ReturnType<typeof type<any>>
 ): ParseResult<T> {
   const parseResult = parseJson<T>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
 
   const validation = schema(parseResult.data);
-  
+
   if (validation instanceof type.errors) {
     return {
       success: false,
-      error: validation.summary
+      error: validation.summary,
     };
   }
 
   return {
     success: true,
-    data: validation as T
+    data: validation as T,
   };
 }
 
@@ -159,7 +167,7 @@ export function parseJsonWithSchema<T = any>(
  */
 export function parseJsonArray<T = any>(jsonString: string): ParseResult<T[]> {
   const parseResult = parseJson<T[]>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
@@ -167,13 +175,13 @@ export function parseJsonArray<T = any>(jsonString: string): ParseResult<T[]> {
   if (!Array.isArray(parseResult.data)) {
     return {
       success: false,
-      error: 'Parsed JSON is not an array'
+      error: ERROR_MESSAGES.PARSE.NOT_AN_ARRAY,
     };
   }
 
   return {
     success: true,
-    data: parseResult.data
+    data: parseResult.data,
   };
 }
 
@@ -188,7 +196,7 @@ export function parseJsonArrayWithSchema<T = any>(
   schema: ReturnType<typeof type<any>>
 ): ParseResult<T[]> {
   const parseResult = parseJsonArray<T>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
@@ -196,20 +204,20 @@ export function parseJsonArrayWithSchema<T = any>(
   // Validar cada elemento del array
   for (let i = 0; i < parseResult.data!.length; i++) {
     const validation = schema(parseResult.data![i]);
-    
+
     if (validation instanceof type.errors) {
       return {
         success: false,
-        error: `Error at index ${i}: ${validation.summary}`
+        error: ERROR_MESSAGES.PARSE.ARRAY_ITEM(i, validation.summary),
       };
     }
-    
+
     parseResult.data![i] = validation as T;
   }
 
   return {
     success: true,
-    data: parseResult.data
+    data: parseResult.data,
   };
 }
 
@@ -218,23 +226,29 @@ export function parseJsonArrayWithSchema<T = any>(
  * @param jsonString - String JSON a parsear
  * @returns ParseResult con el objeto parseado
  */
-export function parseJsonObject<T = Record<string, any>>(jsonString: string): ParseResult<T> {
+export function parseJsonObject<T = Record<string, any>>(
+  jsonString: string
+): ParseResult<T> {
   const parseResult = parseJson<T>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
 
-  if (typeof parseResult.data !== 'object' || parseResult.data === null || Array.isArray(parseResult.data)) {
+  if (
+    typeof parseResult.data !== "object" ||
+    parseResult.data === null ||
+    Array.isArray(parseResult.data)
+  ) {
     return {
       success: false,
-      error: 'Parsed JSON is not an object'
+      error: ERROR_MESSAGES.PARSE.NOT_AN_OBJECT,
     };
   }
 
   return {
     success: true,
-    data: parseResult.data
+    data: parseResult.data,
   };
 }
 
@@ -249,23 +263,23 @@ export function parseJsonObjectWithSchema<T = Record<string, any>>(
   schema: ReturnType<typeof type<any>>
 ): ParseResult<T> {
   const parseResult = parseJsonObject<T>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
 
   const validation = schema(parseResult.data);
-  
+
   if (validation instanceof type.errors) {
     return {
       success: false,
-      error: validation.summary
+      error: validation.summary,
     };
   }
 
   return {
     success: true,
-    data: validation as T
+    data: validation as T,
   };
 }
 
@@ -274,25 +288,27 @@ export function parseJsonObjectWithSchema<T = Record<string, any>>(
  * @param jsonString - String JSON a parsear
  * @returns ParseResult con el valor primitivo parseado
  */
-export function parseJsonPrimitive(jsonString: string): ParseResult<string | number | boolean | null> {
+export function parseJsonPrimitive(
+  jsonString: string
+): ParseResult<string | number | boolean | null> {
   const parseResult = parseJson<string | number | boolean | null>(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
 
   const value = parseResult.data;
-  
-  if (typeof value === 'object' && value !== null) {
+
+  if (typeof value === "object" && value !== null) {
     return {
       success: false,
-      error: 'Parsed JSON is not a primitive value'
+      error: ERROR_MESSAGES.PARSE.NOT_PRIMITIVE,
     };
   }
 
   return {
     success: true,
-    data: value
+    data: value,
   };
 }
 
@@ -310,10 +326,10 @@ export function parseJsonSafe<T = any>(
     maxDepth?: number;
   } = {}
 ): ParseResult<T> {
-  if (!jsonString || typeof jsonString !== 'string') {
+  if (!jsonString || typeof jsonString !== "string") {
     return {
       success: false,
-      error: 'Input must be a non-empty string'
+      error: ERROR_MESSAGES.PARSE.EMPTY_INPUT,
     };
   }
 
@@ -324,7 +340,7 @@ export function parseJsonSafe<T = any>(
       if (depth > options.maxDepth) {
         return {
           success: false,
-          error: `JSON depth exceeds maximum allowed depth of ${options.maxDepth}`
+          error: ERROR_MESSAGES.PARSE.DEPTH_EXCEEDED(options.maxDepth),
         };
       }
     }
@@ -332,12 +348,12 @@ export function parseJsonSafe<T = any>(
     const parsed = JSON.parse(jsonString, options.reviver);
     return {
       success: true,
-      data: parsed as T
+      data: parsed as T,
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown parsing error'
+      error: error instanceof Error ? error.message : ERROR_MESSAGES.PARSE.UNKNOWN_ERROR,
     };
   }
 }
@@ -352,10 +368,10 @@ function calculateJsonDepth(jsonString: string): number {
   let currentDepth = 0;
 
   for (const char of jsonString) {
-    if (char === '{' || char === '[') {
+    if (char === "{" || char === "[") {
       currentDepth++;
       maxDepth = Math.max(maxDepth, currentDepth);
-    } else if (char === '}' || char === ']') {
+    } else if (char === "}" || char === "]") {
       currentDepth--;
     }
   }
@@ -368,8 +384,10 @@ function calculateJsonDepth(jsonString: string): number {
  * @param jsonStrings - Array de strings JSON a parsear
  * @returns Array de ParseResult
  */
-export function parseMultipleJson<T = any>(jsonStrings: string[]): ParseResult<T>[] {
-  return jsonStrings.map(str => parseJson<T>(str));
+export function parseMultipleJson<T = any>(
+  jsonStrings: string[]
+): ParseResult<T>[] {
+  return jsonStrings.map((str) => parseJson<T>(str));
 }
 
 /**
@@ -378,9 +396,12 @@ export function parseMultipleJson<T = any>(jsonStrings: string[]): ParseResult<T
  * @param indent - Número de espacios para indentación (default: 2)
  * @returns ParseResult con el JSON formateado
  */
-export function parseAndFormatJson(jsonString: string, indent: number = 2): ParseResult<string> {
+export function parseAndFormatJson(
+  jsonString: string,
+  indent: number = 2
+): ParseResult<string> {
   const parseResult = parseJson(jsonString);
-  
+
   if (!parseResult.success) {
     return parseResult;
   }
@@ -389,12 +410,12 @@ export function parseAndFormatJson(jsonString: string, indent: number = 2): Pars
     const formatted = JSON.stringify(parseResult.data, null, indent);
     return {
       success: true,
-      data: formatted
+      data: formatted,
     };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Formatting error'
+      error: error instanceof Error ? error.message : ERROR_MESSAGES.PARSE.FORMATTING_ERROR,
     };
   }
 }
@@ -404,17 +425,19 @@ export function parseAndFormatJson(jsonString: string, indent: number = 2): Pars
  * @param dataTypeSchema - Esquema opcional para el tipo de datos
  * @returns Esquema arktype para SocketIoEvent
  */
-export function createSocketIoEventSchema<T = any>(dataTypeSchema?: ReturnType<typeof type<any>>) {
+export function createSocketIoEventSchema<T = any>(
+  dataTypeSchema?: ReturnType<typeof type<any>>
+) {
   if (dataTypeSchema) {
     return type({
-      eventName: 'string',
-      data: dataTypeSchema
+      eventName: "string",
+      data: dataTypeSchema,
     });
   }
-  
+
   return type({
-    eventName: 'string',
-    data: 'unknown'
+    eventName: "string",
+    data: "unknown",
   });
 }
 
@@ -429,27 +452,27 @@ export function parseSocketIo42MessageWithSchema<T = any>(
   schema?: ReturnType<typeof type<any>>
 ): ParseResult<SocketIoEvent<T>> {
   const parsed = parseSocketIo42Message<T>(message);
-  
+
   if (!parsed) {
     return {
       success: false,
-      error: 'Invalid Socket.io message format'
+      error: ERROR_MESSAGES.PARSE.INVALID_SOCKET_IO,
     };
   }
 
   const eventSchema = createSocketIoEventSchema(schema);
   const validation = eventSchema(parsed);
-  
+
   if (validation instanceof type.errors) {
     return {
       success: false,
-      error: validation.summary
+      error: validation.summary,
     };
   }
 
   return {
     success: true,
-    data: validation as SocketIoEvent<T>
+    data: validation as SocketIoEvent<T>,
   };
 }
 
@@ -460,37 +483,38 @@ export const ArktypeSchemas = {
   /**
    * Esquema para strings no vacíos
    */
-  nonEmptyString: type('string > 0'),
-  
+  nonEmptyString: type("string > 0"),
+
   /**
    * Esquema para emails
    */
-  email: type('string.email'),
-  
+  email: type("string.email"),
+
   /**
    * Esquema para URLs
    */
-  url: type('string.url'),
-  
+  url: type("string.url"),
+
   /**
    * Esquema para números positivos
    */
-  positiveNumber: type('number > 0'),
-  
+  positiveNumber: type("number > 0"),
+
   /**
    * Esquema para números enteros
    */
-  integer: type('number.integer'),
-  
+  integer: type("number.integer"),
+
   /**
    * Esquema para arrays no vacíos
    */
   nonEmptyArray: type("unknown[] > 0"),
-  
+
   /**
    * Esquema para objetos con propiedades requeridas
    */
-  requiredObject: (requiredKeys: string[]) => type({
-    ...Object.fromEntries(requiredKeys.map(key => [key, 'unknown']))
-  })
+  requiredObject: (requiredKeys: string[]) =>
+    type({
+      ...Object.fromEntries(requiredKeys.map((key) => [key, "unknown"])),
+    }),
 };

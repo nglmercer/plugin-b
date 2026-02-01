@@ -1,5 +1,6 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import type { ActionRegistry } from "trigger_system/node";
+import { PLUGIN_NAMES, ACTIONS, HELPERS } from "../src/constants";
 
 interface ActionRegistryApi extends IPlugin {
   register: ActionRegistry["register"];
@@ -10,33 +11,31 @@ interface ActionRegistryApi extends IPlugin {
 }
 
 export class mcplugin implements IPlugin {
-  name = "mcplugin";
+  name = PLUGIN_NAMES.MCPLUGIN;
   version = "1.0.0";
 
-  constructor() {
-  }
+  constructor() {}
 
   async onLoad(context: PluginContext): Promise<void> {
-    const registryPlugin = await context.getPlugin("action-registry") as ActionRegistryApi;
-    
+    const registryPlugin = (await context.getPlugin(
+      PLUGIN_NAMES.ACTION_REGISTRY
+    )) as ActionRegistryApi;
+
     if (!registryPlugin) return;
-    
-      
-      // Registrar acción
-      registryPlugin.registry.register("mc", (action, ctx) => {
-        console.log("[mc 123123123412]", action, ctx);
-        return "mc";
+
+    // Registrar acción
+    registryPlugin.registry.register(ACTIONS.MC, (action, ctx) => {
+      console.log("[mc 123123123412]", action, ctx);
+      return ACTIONS.MC;
+    });
+
+    // Registrar helper global
+    if (registryPlugin.registerHelper) {
+      registryPlugin.registerHelper(HELPERS.MC_HELPER, (text: string) => {
+        return `MC-PREFIX: ${text}`;
       });
-
-      // Registrar helper global
-      if (registryPlugin.registerHelper) {
-        registryPlugin.registerHelper("mcHelper", (text: string) => {
-          return `MC-PREFIX: ${text}`;
-        });
-        context.log.info("mcHelper registrado");
-      }
-
-
+      context.log.info(`${HELPERS.MC_HELPER} registrado`);
+    }
   }
 
   onUnload(): void {

@@ -4,128 +4,129 @@ import * as path from "path";
 import { connect, TikTokWebSocket } from "./tiktok/websocket";
 import { parseSocketIo42Message, SocketIoMessage } from "../utils/parsejson";
 import { getBaseDir } from "../utils/filepath";
+import {
+  LOG_MESSAGES,
+  TIKTOK_CONSTANTS,
+  PATHS,
+  PLATFORMS,
+} from "../src/constants";
+
 // Referencia global al proceso webview para poder controlarlo
 let webviewProcess: ChildProcess | null = null;
 // Referencia a la conexión WebSocket para poder cerrarla limpiamente
 let wsConnection: TikTokWebSocket | null = null;
-const logsMap = {
-    closed: 'closed webview process',
-    error: 'error webview',
-    onUnload: 'on unload plugin',
-    started: 'started webview process',
-    closing: 'closing webview process',
-} as const;
-const Tiktok = {
-    logged: 'tikfinity_logged',
-    msg: 'tikfinity_msg',
-    Payload: 'TikFinity_PAYLOAD:'
-} as const;
+
 export default definePlugin({
-    name: "tikfinity",
-    version: "1.0.0",
-    onLoad: async (context: PluginContext) => {
-        console.log(logsMap.started);
-        // Ruta al script del proceso webview
-        // En desarrollo: scripts/tikfinity-webview.ts
-        // En producción (compilado): dist/scripts/tikfinity-webview.ts (relativo al ejecutable)
-        const baseScript = path.join(getBaseDir(), 'scripts/tikfinity-webview.ts');
-        const webviewScriptPath = await Bun.file(baseScript).exists() 
-            ? baseScript 
-            : path.join(getBaseDir(), 'scripts/tikfinity-webview.js');
-        
-        // Iniciamos el proceso hijo con Bun
-        // Bun puede ejecutar TypeScript directamente sin necesidad de compilar
-        webviewProcess = spawn('bun', ['run', webviewScriptPath], {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            shell: true,
-            detached: false
-        });
+  name: "tikfinity",
+  version: "1.0.0",
+  onLoad: async (context: PluginContext) => {
+    console.log(LOG_MESSAGES.WEBVIEW.STARTED);
 
-        let webviewClosed = false;
+    // Ruta al script del proceso webview
+    // En desarrollo: scripts/tikfinity-webview.ts
+    // En producción (compilado): dist/scripts/tikfinity-webview.ts (relativo al ejecutable)
+    const baseScript = path.join(getBaseDir(), PATHS.TIKFINITY_WEBVIEW_TS);
+    const webviewScriptPath = await Bun.file(baseScript).exists()
+      ? baseScript
+      : path.join(getBaseDir(), PATHS.TIKFINITY_WEBVIEW_JS);
 
-        // Escuchar la salida del proceso hijo para recibir el payload
-        if (webviewProcess.stdout) {
-            webviewProcess.stdout.on('data', (data) => {
-                const output = data.toString();
-                console.log(Tiktok.msg, output);
-                
-                // Verificar si es el payload de TikFinity
-                if (output.includes(Tiktok.Payload)) {
-                    const payload = output.replace(Tiktok.Payload, '').trim();
+    // Iniciamos el proceso hijo con Bun
+    // Bun puede ejecutar TypeScript directamente sin necesidad de compilar
+    webviewProcess = spawn("bun", ["run", webviewScriptPath], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: true,
+      detached: false,
+    });
 
-                    // Si ya existe una conexión, no crear otra
-                    if (wsConnection?.isConnected()) {
-                        console.log("⚠️ Conexión WebSocket ya existe, ignorando payload duplicado");
-                        return;
-                    }
+    let webviewClosed = false;
 
-                    // Cerrar conexión anterior si existe
-                    if (wsConnection) {
-                        wsConnection.disconnect();
-                    }
+    // Escuchar la salida del proceso hijo para recibir el payload
+    if (webviewProcess.stdout) {
+      webviewProcess.stdout.on("data", (data) => {
+        const output = data.toString();
+        console.log(TIKTOK_CONSTANTS.EVENT_MESSAGE, output);
 
-                    connect(payload, (message) => {
-                        // Por defecto: procesar mensaje raw y emitir como { eventName, data }
-                        const info = SocketIoMessage(message);
-                        if (!message || !info) return;
-                        if (info.engineType?.length === 1) return;
-                        const data = parseSocketIo42Message(message);
-                        if (!data || !data.eventName) {
-                            console.log(info);
-                            return;
-                        }
-                        const eventName = data.eventName;
-                        const eventData = data?.data || message;
-                        context.emit('tiktok', {
-                            eventName,
-                            data: eventData
-                        });
-                    }).then(ws => {
-                        wsConnection = ws;
-                    });
+        // Verificar si es el payload de TikFinity
+        if (output.includes(TIKTOK_CONSTANTS.PAYLOAD_PREFIX)) {
+          const payload = output.replace(TIKTOK_CONSTANTS.PAYLOAD_PREFIX, "").trim();
 
-                    webviewClosed = true;
-                }
-            });
-        }
+          // Si ya existe una conexión activa, actualizar el payload (cambiar de canal)
+          if (wsConnection?.isConnected()) {
+            console.log(LOG_MESSAGES.TIKFINITY.CONNECTION_EXISTS);
+            wsConnection.updatePayload(payload);
+            return;
+          }
 
-        // Escuchar errores del proceso hijo
-        if (webviewProcess.stderr) {
-            webviewProcess.stderr.on('data', (data) => {
-                console.error(logsMap.error, data.toString());
-            });
-        }
-
-        // Manejar el cierre del proceso hijo
-        webviewProcess.on('close', (code) => {
-            console.log(logsMap.closed,code);
-            webviewClosed = true;
-            webviewProcess = null;
-        });
-
-        // Manejar errores de spawn
-        webviewProcess.on('error', (error) => {
-            console.error(logsMap.error, error);
-            webviewProcess = null;
-        });
-
-        console.log(logsMap.started);
-    },
-    onUnload: () => {
-        console.log(logsMap.onUnload);
-
-        // Cerrar la conexión WebSocket si existe
-        if (wsConnection) {
-            console.log("Cerrando conexión WebSocket...");
+          // Cerrar conexión anterior si existe pero no está conectada
+          if (wsConnection) {
             wsConnection.disconnect();
-            wsConnection = null;
-        }
+          }
 
-        // Cerramos el proceso webview si aún está activo
-        if (webviewProcess) {
-            console.log(logsMap.closing);
-            webviewProcess.kill();
-            webviewProcess = null;
+          connect(payload, (message) => {
+            // Por defecto: procesar mensaje raw y emitir como { eventName, data }
+            const info = SocketIoMessage(message);
+            if (!message || !info) return;
+            //temporal, not definitive for better filter
+            if (info.engineType?.length !== 1) {
+              console.log({ invalidtype: info.engineType });
+            }
+            const data = parseSocketIo42Message(message);
+            if (!data || !data.eventName) {
+              console.log(info);
+              return;
+            }
+            const eventName = data.eventName;
+            const eventData = data?.data || message;
+            context.emit(PLATFORMS.TIKTOK, {
+              eventName,
+              data: eventData,
+            });
+          }).then((ws) => {
+            wsConnection = ws;
+          });
+
+          webviewClosed = true;
         }
+      });
     }
+
+    // Escuchar errores del proceso hijo
+    if (webviewProcess.stderr) {
+      webviewProcess.stderr.on("data", (data) => {
+        console.error(LOG_MESSAGES.WEBVIEW.ERROR, data.toString());
+      });
+    }
+
+    // Manejar el cierre del proceso hijo
+    webviewProcess.on("close", (code) => {
+      console.log(LOG_MESSAGES.WEBVIEW.CLOSED, code);
+      webviewClosed = true;
+      webviewProcess = null;
+    });
+
+    // Manejar errores de spawn
+    webviewProcess.on("error", (error) => {
+      console.error(LOG_MESSAGES.WEBVIEW.ERROR, error);
+      webviewProcess = null;
+    });
+
+    console.log(LOG_MESSAGES.WEBVIEW.STARTED);
+  },
+  onUnload: () => {
+    console.log(LOG_MESSAGES.WEBVIEW.ON_UNLOAD);
+
+    // Cerrar la conexión WebSocket si existe
+    if (wsConnection) {
+      console.log(LOG_MESSAGES.TIKFINITY.CLOSING_WS);
+      wsConnection.disconnect();
+      wsConnection = null;
+    }
+
+    // Cerramos el proceso webview si aún está activo
+    if (webviewProcess) {
+      console.log(LOG_MESSAGES.WEBVIEW.CLOSING);
+      webviewProcess.kill();
+      webviewProcess = null;
+    }
+  },
 });

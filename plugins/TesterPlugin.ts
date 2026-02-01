@@ -1,5 +1,6 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import type { RuleEngine,ActionRegistry,ActionHandler } from "trigger_system/node";
+import { PLUGIN_NAMES, ERROR_MESSAGES } from "../src/constants";
 
 /**
  * Plugin encargado de facilitar las pruebas de eventos
@@ -38,7 +39,7 @@ interface ActionRegistryApi {
 }
 
 export class RuleTesterPlugin implements IPlugin {
-  name = "rule-tester";
+  name = PLUGIN_NAMES.RULE_TESTER;
   version = "1.0.0";
   private context?: PluginContext;
 
@@ -55,9 +56,9 @@ export class RuleTesterPlugin implements IPlugin {
    * Procesa un evento utilizando el motor de reglas y los helpers registrados
    */
   async testEvent(engine: RuleEngine, event: string, data: any) {
-    if (!this.context) throw new Error("Plugin no cargado");
+    if (!this.context) throw new Error(ERROR_MESSAGES.PLUGIN.NOT_LOADED);
 
-    const registryPlugin = await this.context.getPlugin("action-registry") as ActionRegistryPlugin;
+    const registryPlugin = await this.context.getPlugin(PLUGIN_NAMES.ACTION_REGISTRY) as ActionRegistryPlugin;
     const pluginHelpers = registryPlugin?.getSharedApi?.()?.getHelpers?.() || {};
 
     console.log(`TESTER: ${event}`);

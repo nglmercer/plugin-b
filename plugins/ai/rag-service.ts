@@ -4,6 +4,7 @@ import { deepseek } from '@ai-sdk/deepseek';
 import { GemmaEmbeddingFunction } from "./embedding";
 import { CONFIG, DocumentSchema, QuerySchema } from "./constants";
 import { type } from "arktype";
+import { ERROR_MESSAGES } from "../../src/constants";
 
 export class HybridRAG {
   private db: lancedb.Connection | null = null;
@@ -33,7 +34,7 @@ export class HybridRAG {
     }
 
     // En este punto, 'out' es un string[] validado por TypeScript y Arktype
-    if (!this.db) throw new Error("RAG no inicializado");
+    if (!this.db) throw new Error(ERROR_MESSAGES.RAG.NOT_INITIALIZED);
     
     const data = out.map((text) => ({ text }));
 
@@ -59,7 +60,7 @@ export class HybridRAG {
     if (validation instanceof type.errors) {
       throw new Error(validation.summary);
     }
-    if (!this.table) throw new Error("Table not initialized");
+    if (!this.table) throw new Error(ERROR_MESSAGES.RAG.TABLE_NOT_INITIALIZED);
 
     const results = await this.table
       .search(userQuery)
@@ -69,7 +70,7 @@ export class HybridRAG {
     const context = results.map((r) => r.text).join("\n---\n");
 
     const { text } = await generateText({
-      model: deepseek(CONFIG.MODELS.CHAT), // No magic string
+      model: deepseek(CONFIG.MODELS.CHAT),
       system: "Eres un experto técnico. Responde basándote estrictamente en el contexto.",
       prompt: `Contexto:\n${context}\n\nPregunta: ${userQuery}`,
     });

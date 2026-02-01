@@ -1,6 +1,14 @@
 import { pipeline, TextToAudioOutput, TextToAudioPipelineOptions } from '@huggingface/transformers';
 import * as fs from 'fs';
 import * as path from 'path';
+import { 
+    SupertonicONNX, 
+    loadSupertonicONNX, 
+    loadVoiceStyleFromURL, 
+    Style,
+    Language,
+    BufferWav
+} from './supertonic-onnx.js';
 
 // Tipado extendido para los métodos útiles
 interface AudioOutput extends TextToAudioOutput {
@@ -17,6 +25,11 @@ interface SynthesisOptions {
     volume?: string;
     pitch?: string;
 }
+
+/**
+ * Backend type for TTS implementation
+ */
+export type TTSBackend = 'huggingface' | 'onnx';
 
 /**
  * Voces disponibles en Supertonic
@@ -37,9 +50,19 @@ export const VOICES = {
 export type VoiceKey = keyof typeof VOICES;
 
 /**
- * Clase interna que implementa el TTS usando Supertonic
+ * Configuration for ONNX backend
  */
-class SupertonicTTS {
+export interface ONNXConfig {
+    onnxDir: string;
+    voiceUrl?: string;
+    language?: Language;
+    totalSteps?: number;
+}
+
+/**
+ * Clase interna que implementa el TTS usando HuggingFace Transformers
+ */
+class HuggingFaceTTS {
     private static instance: any = null;
     private readonly baseUrl = 'https://huggingface.co/onnx-community/Supertonic-TTS-2-ONNX/resolve/main/voices/';
     
@@ -53,12 +76,12 @@ class SupertonicTTS {
      * Initialize the TTS pipeline
      */
     private async getPipeline() {
-        if (!SupertonicTTS.instance) {
-            SupertonicTTS.instance = await pipeline('text-to-speech', 'onnx-community/Supertonic-TTS-2-ONNX', {
+        if (!HuggingFaceTTS.instance) {
+            HuggingFaceTTS.instance = await pipeline('text-to-speech', 'onnx-community/Supertonic-TTS-2-ONNX', {
                 device: 'cpu',
             });
         }
-        return SupertonicTTS.instance;
+        return HuggingFaceTTS.instance;
     }
 
     /**
@@ -89,21 +112,143 @@ class SupertonicTTS {
 }
 
 /**
+ * Clase interna que implementa el TTS usando ONNX Runtime directamente
+ */
+class ONNXTTS {
+    private tts: SupertonicONNX | null = null;
+    private voiceStyle: Style | null = null;
+    private config: ONNXConfig;
+    private isInitialized: boolean = false;
+
+    constructor(config: ONNXConfig) {
+        this.config = {
+            voiceUrl: 'https://huggingface.co/onnx-community/Supertonic-TTS-2-ONNX/resolve/main/voices/F1.bin',
+            language: 'en',
+            totalSteps: 5,
+            ...config
+        };
+    }
+
+    /**
+     * Initialize the ONNX TTS models
+     */
+    public async initialize(): Promise<void> {
+        if (this.isInitialized) return;
+
+        // Check if ONNX models exist
+        const requiredFiles = [
+            'duration_predictor.onnx',
+            'text_encoder.onnx',
+            'vector_estimator.onnx',
+            'vocoder.onnx',
+            'tts.json',
+            'unicode_indexer.json'
+        ];
+
+        for (const file of requiredFiles) {
+            const filePath = path.join(this.config.onnxDir, file);
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`Missing required ONNX model file: ${filePath}`);
+            }
+        }
+
+        this.tts = await loadSupertonicONNX(this.config.onnxDir);
+        this.voiceStyle = await loadVoiceStyleFromURL(this.config.voiceUrl!);
+        this.isInitialized = true;
+    }
+
+    /**
+     * Generate audio from text
+     */
+    public async speak(text: string, speed: number = 1.0): Promise<{ wav: number[]; duration: number[] }> {
+        if (!this.isInitialized || !this.tts || !this.voiceStyle) {
+            throw new Error('ONNX TTS not initialized. Call initialize() first.');
+        }
+
+        return await this.tts.call(
+            text, 
+            this.config.language!, 
+            this.voiceStyle, 
+            this.config.totalSteps!, 
+            speed
+        );
+    }
+
+    /**
+     * Check if ONNX models are available
+     */
+    public static isAvailable(onnxDir: string): boolean {
+        return fs.existsSync(path.join(onnxDir, 'duration_predictor.onnx'));
+    }
+}
+
+/**
  * TTSService - Servicio principal de Text-to-Speech
- * Implementa la generación de audio usando Supertonic-TTS
+ * Implementa la generación de audio usando Supertonic-TTS con soporte para múltiples backends
  */
 export class TTSService {
-    private supertonic: SupertonicTTS;
+    private huggingfaceTTS: HuggingFaceTTS;
+    private onnxTTS: ONNXTTS | null = null;
     private outputDir: string;
+    private backend: TTSBackend;
+    private sampleRate: number = 24000; // Supertonic uses 24kHz
 
-    constructor(outputDir: string = './output') {
+    constructor(
+        outputDir: string = './output',
+        backend: TTSBackend = 'huggingface',
+        onnxConfig?: ONNXConfig
+    ) {
         this.outputDir = outputDir;
-        this.supertonic = new SupertonicTTS('F1'); // Default voice: F1
+        this.backend = backend;
+        this.huggingfaceTTS = new HuggingFaceTTS('F1'); // Default voice: F1
+        
+        // Initialize ONNX backend if requested and config provided
+        if (backend === 'onnx' && onnxConfig) {
+            this.onnxTTS = new ONNXTTS(onnxConfig);
+        }
         
         // Asegurar que el directorio de salida existe
         if (!fs.existsSync(this.outputDir)) {
             fs.mkdirSync(this.outputDir, { recursive: true });
         }
+    }
+
+    /**
+     * Initialize the service (required for ONNX backend)
+     */
+    public async initialize(): Promise<void> {
+        if (this.backend === 'onnx' && this.onnxTTS) {
+            await this.onnxTTS.initialize();
+            console.log('[TTSService] ONNX backend initialized');
+        } else {
+            console.log('[TTSService] Using HuggingFace backend');
+        }
+    }
+
+    /**
+     * Switch between backends
+     */
+    public async setBackend(backend: TTSBackend, onnxConfig?: ONNXConfig): Promise<void> {
+        if (backend === this.backend) return;
+
+        this.backend = backend;
+        
+        if (backend === 'onnx') {
+            if (!onnxConfig) {
+                throw new Error('ONNX config required when switching to ONNX backend');
+            }
+            this.onnxTTS = new ONNXTTS(onnxConfig);
+            await this.onnxTTS.initialize();
+        } else {
+            this.onnxTTS = null;
+        }
+    }
+
+    /**
+     * Get current backend
+     */
+    public getBackend(): TTSBackend {
+        return this.backend;
     }
 
     /**
@@ -121,21 +266,24 @@ export class TTSService {
         options: SynthesisOptions = {}
     ): Promise<{ savedPath: string; fileBuffer: Buffer }> {
         try {
-            // Usar directamente las voces de Supertonic (F1-F5, M1-M5)
-            const voiceKey = this.validateVoice(voice);
-            
             // Parse rate option to speed multiplier
             const speed = this.parseRateToSpeed(options.rate);
             
-            // Generate audio
-            const audio = await this.supertonic.speak(text, voiceKey, { 
-                speed: speed,
-                num_inference_steps: 5
-            });
+            let fileBuffer: Buffer;
 
-            // Convert to WAV buffer
-            const wavBuffer = audio.toWav();
-            const fileBuffer = Buffer.from(wavBuffer);
+            if (this.backend === 'onnx' && this.onnxTTS) {
+                // Use ONNX backend
+                const result = await this.onnxTTS.speak(text, speed);
+                fileBuffer = BufferWav(result.wav, this.sampleRate);
+            } else {
+                // Use HuggingFace backend
+                const voiceKey = this.validateVoice(voice);
+                const audio = await this.huggingfaceTTS.speak(text, voiceKey, { 
+                    speed: speed,
+                    num_inference_steps: 5
+                });
+                fileBuffer = Buffer.from(audio.toWav());
+            }
 
             // Save to file
             const safeFilename = this.sanitizeFilename(filename);
@@ -151,6 +299,29 @@ export class TTSService {
         } catch (error) {
             console.error('[TTSService] Error synthesizing speech:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Synthesize without saving to file (for streaming or direct use)
+     */
+    async synthesizeBuffer(
+        text: string,
+        voice: string = 'F1',
+        options: SynthesisOptions = {}
+    ): Promise<Buffer> {
+        const speed = this.parseRateToSpeed(options.rate);
+
+        if (this.backend === 'onnx' && this.onnxTTS) {
+            const result = await this.onnxTTS.speak(text, speed);
+            return BufferWav(result.wav, this.sampleRate);
+        } else {
+            const voiceKey = this.validateVoice(voice);
+            const audio = await this.huggingfaceTTS.speak(text, voiceKey, { 
+                speed: speed,
+                num_inference_steps: 5
+            });
+            return Buffer.from(audio.toWav());
         }
     }
 
@@ -199,4 +370,4 @@ export class TTSService {
 }
 
 // Export individual items for flexibility
-export { SupertonicTTS };
+export { HuggingFaceTTS, ONNXTTS, SupertonicONNX, loadSupertonicONNX, loadVoiceStyleFromURL };

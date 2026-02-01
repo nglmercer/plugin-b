@@ -1,6 +1,7 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { ActionRegistry } from "trigger_system/node";
 import { TTScleaner } from "./cleaner";
+import { PLUGIN_NAMES, HELPERS } from "../constants";
 
 /**
  * Registro simple para funciones auxiliares (helpers/globals)
@@ -29,7 +30,7 @@ class HelperRegistry {
 }
 
 export class ActionRegistryPlugin implements IPlugin {
-  name = "action-registry";
+  name = PLUGIN_NAMES.ACTION_REGISTRY;
   version = "1.0.0";
 
   private get registry() {
@@ -49,13 +50,13 @@ export class ActionRegistryPlugin implements IPlugin {
     console.log(`${this.name} v${this.version} onLoad`);
 
     // Registrar helpers básicos por defecto
-    this.helperRegistry.register("last", () => {
+    this.helperRegistry.register(HELPERS.LAST, () => {
       const history = TTScleaner.getMessageHistory();
       const lastItem = history[history.length - 1];
       return lastItem ? lastItem.cleanedText : "";
     });
 
-    this.helperRegistry.register("clean", (t: any) => {
+    this.helperRegistry.register(HELPERS.CLEAN, (t: any) => {
       return TTScleaner.cleanOnly(String(t || ""));
     });
   }

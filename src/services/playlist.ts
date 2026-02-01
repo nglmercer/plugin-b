@@ -5,6 +5,14 @@ import {
   getAudioMetadata,
 } from "miniaudio_node";
 import type { AudioPlayerConfig } from "miniaudio_node";
+import {
+  LOG_MESSAGES,
+  ERROR_MESSAGES,
+  EVENTS,
+  TRACK_END_REASONS,
+  TIMING,
+  AUDIO,
+} from "../constants";
 
 export type Track = string | Buffer;
 
@@ -29,7 +37,7 @@ export class PlaylistManager {
   private onTrackEnd?: (
     track: Track,
     index: number,
-    reason: "completed" | "manual",
+    reason: "completed" | "manual"
   ) => void;
   private onPlaylistEnd?: () => void;
 
@@ -41,7 +49,7 @@ export class PlaylistManager {
    * Load multiple tracks into playlist
    */
   async loadTracks(tracks: Track[]): Promise<void> {
-    console.log(`📚 Loading ${tracks.length} tracks into playlist...`);
+    console.log(LOG_MESSAGES.PLAYLIST.LOADING_TRACKS(tracks.length));
 
     const validTracks: Track[] = [];
 
@@ -49,14 +57,14 @@ export class PlaylistManager {
       if (typeof track === "string") {
         const extension = track.split(".").pop()?.toLowerCase();
         if (!extension || !isFormatSupported(extension)) {
-          console.warn(`⚠️  Unsupported format or invalid extension: ${track}`);
+          console.warn(ERROR_MESSAGES.PLAYLIST.UNSUPPORTED_FORMAT(track));
           continue;
         }
 
         // Check file exists
         const fs = await import("node:fs");
         if (!fs.existsSync(track)) {
-          console.warn(`⚠️  File not found: ${track}`);
+          console.warn(ERROR_MESSAGES.PLAYLIST.FILE_NOT_FOUND(track));
           continue;
         }
         validTracks.push(track);
@@ -67,7 +75,7 @@ export class PlaylistManager {
     }
 
     this.tracks = validTracks;
-    console.log(`✅ Loaded ${this.tracks.length} valid tracks`);
+    console.log(LOG_MESSAGES.PLAYLIST.LOADED_TRACKS(this.tracks.length));
   }
 
   /**
@@ -78,17 +86,17 @@ export class PlaylistManager {
     if (typeof track === "string") {
       const extension = track.split(".")?.pop()?.toLowerCase();
       if (!extension || !isFormatSupported(extension)) {
-        throw new Error(`Unsupported format or invalid extension: ${track}`);
+        throw new Error(ERROR_MESSAGES.PLAYLIST.UNSUPPORTED_FORMAT(track));
       }
 
       const fs = await import("node:fs");
       if (!fs.existsSync(track)) {
-        throw new Error(`File not found: ${track}`);
+        throw new Error(ERROR_MESSAGES.PLAYLIST.FILE_NOT_FOUND(track));
       }
     }
 
     this.tracks.push(track);
-    console.log(`✅ Added track. Total: ${this.tracks.length}`);
+    console.log(LOG_MESSAGES.PLAYLIST.ADDED_TRACK(this.tracks.length));
   }
 
   /**
@@ -97,12 +105,12 @@ export class PlaylistManager {
   async playCurrentTrack(): Promise<void> {
     // If already busy processing, skip this call to avoid race conditions
     if (this.isBusy) {
-      console.log("⏭️  Operation in progress, skipping duplicate call");
+      console.log(LOG_MESSAGES.PLAYLIST.OPERATION_IN_PROGRESS);
       return;
     }
 
     if (this.tracks.length === 0) {
-      throw new Error("No tracks loaded");
+      throw new Error(LOG_MESSAGES.PLAYLIST.NO_TRACKS);
     }
 
     this.isBusy = true;
@@ -118,21 +126,25 @@ export class PlaylistManager {
       const trackLabel =
         typeof currentTrack === "string"
           ? currentTrack
-          : `Buffer Track #${this.currentTrackIndex + 1}`;
+          : AUDIO.BUFFER_TRACK_LABEL(this.currentTrackIndex + 1);
       console.log(
-        `🎵 Playing track ${this.currentTrackIndex + 1}/${this.tracks.length}: ${trackLabel}`,
+        LOG_MESSAGES.PLAYLIST.PLAYING_TRACK(
+          this.currentTrackIndex + 1,
+          this.tracks.length,
+          trackLabel
+        )
       );
 
       // Stop any currently playing audio immediately (with small delay for clean transition)
       if (this.isPlaying) {
         await this.player.stop();
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, TIMING.TRANSITION_DELAY));
       }
 
       try {
         if (typeof currentTrack === "string") {
           if (!currentTrack || currentTrack.trim() === "") {
-            console.error("❌ Empty string track path");
+            console.error(LOG_MESSAGES.PLAYLIST.EMPTY_TRACK_PATH);
             return;
           }
 
@@ -143,7 +155,7 @@ export class PlaylistManager {
           console.log("📋 Track info:", metadata);
         } else if (Buffer.isBuffer(currentTrack)) {
           if (currentTrack.length === 0) {
-            console.error("❌ Buffer track is empty");
+            console.error(LOG_MESSAGES.PLAYLIST.EMPTY_BUFFER);
             return;
           }
 
@@ -152,7 +164,7 @@ export class PlaylistManager {
           await this.player.loadBuffer(bufferData);
           console.log("📋 Track info: [Memory Buffer]");
         } else {
-          console.error("❌ Invalid track format");
+          console.error(LOG_MESSAGES.PLAYLIST.INVALID_FORMAT);
           return;
         }
 
@@ -168,7 +180,7 @@ export class PlaylistManager {
         // Start monitoring playback with proper interval management
         this.monitorPlayback();
       } catch (error) {
-        console.error("❌ Failed to play track:", error);
+        console.error(LOG_MESSAGES.PLAYLIST.PLAYBACK_ERROR, error);
         this.isPlaying = false;
         throw error;
       }
@@ -184,7 +196,7 @@ export class PlaylistManager {
     this.clearMonitorInterval();
 
     // Longer interval to reduce CPU usage and avoid conflicts (500ms is reasonable)
-    const checkIntervalMs = 500;
+    const checkIntervalMs = TIMING.MONITOR_INTERVAL;
 
     this.monitorInterval = setInterval(() => {
       if (this.isStopping) {
@@ -203,7 +215,11 @@ export class PlaylistManager {
           // Notify listeners about track completion
           const currentTrack = this.tracks[this.currentTrackIndex];
           if (currentTrack && this.onTrackEnd) {
-            this.onTrackEnd(currentTrack, this.currentTrackIndex, "completed");
+            this.onTrackEnd(
+              currentTrack,
+              this.currentTrackIndex,
+              TRACK_END_REASONS.COMPLETED
+            );
           }
 
           // Use setImmediate to avoid promise chaining in interval callback
@@ -214,7 +230,7 @@ export class PlaylistManager {
           });
         }
       } catch (error) {
-        console.error("[Monitor] Error checking player state:", error);
+        console.error(LOG_MESSAGES.PLAYLIST.MONITOR_ERROR, error);
         this.clearMonitorInterval();
         this.isPlaying = false;
       }
@@ -237,8 +253,8 @@ export class PlaylistManager {
   async nextTrack(): Promise<void> {
     // Wait for any ongoing operation to complete
     if (this.isBusy) {
-      console.log("⏭️  Operation in progress, delaying next track");
-      await this.waitForIdle(1000);
+      console.log(LOG_MESSAGES.PLAYLIST.OPERATION_IN_PROGRESS);
+      await this.waitForIdle(TIMING.IDLE_TIMEOUT);
     }
 
     this.currentTrackIndex++;
@@ -246,9 +262,9 @@ export class PlaylistManager {
     if (this.currentTrackIndex >= this.tracks.length) {
       if (this.loop) {
         this.currentTrackIndex = 0;
-        console.log("🔄 Looping playlist");
+        console.log(LOG_MESSAGES.PLAYLIST.LOOPING);
       } else {
-        console.log("✅ End of playlist reached");
+        console.log(LOG_MESSAGES.PLAYLIST.END_OF_PLAYLIST);
         this.isPlaying = false;
         this.clearMonitorInterval();
 
@@ -260,7 +276,7 @@ export class PlaylistManager {
     }
 
     // Small delay to prevent immediate successive calls and allow clean transition
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, TIMING.NEXT_TRACK_DELAY));
     await this.playCurrentTrack();
   }
 
@@ -269,7 +285,7 @@ export class PlaylistManager {
    */
   async previousTrack(): Promise<void> {
     if (this.isBusy) {
-      await this.waitForIdle(1000);
+      await this.waitForIdle(TIMING.IDLE_TIMEOUT);
     }
 
     this.currentTrackIndex = Math.max(0, this.currentTrackIndex - 1);
@@ -281,11 +297,11 @@ export class PlaylistManager {
    */
   async goToTrack(index: number): Promise<void> {
     if (index < 0 || index >= this.tracks.length) {
-      throw new Error(`Invalid track index: ${index}`);
+      throw new Error(LOG_MESSAGES.PLAYLIST.INVALID_INDEX(index));
     }
 
     if (this.isBusy) {
-      await this.waitForIdle(1000);
+      await this.waitForIdle(TIMING.IDLE_TIMEOUT);
     }
 
     this.currentTrackIndex = index;
@@ -299,7 +315,7 @@ export class PlaylistManager {
     this.player.pause();
     this.isPlaying = false;
     this.clearMonitorInterval();
-    console.log("⏸️  Paused");
+    console.log(LOG_MESSAGES.PLAYLIST.PAUSED);
   }
 
   /**
@@ -307,14 +323,14 @@ export class PlaylistManager {
    */
   async resume(): Promise<void> {
     if (this.isBusy) {
-      await this.waitForIdle(1000);
+      await this.waitForIdle(TIMING.IDLE_TIMEOUT);
     }
 
     if (!this.isPlaying && this.tracks.length > 0) {
       this.player.play();
       this.isPlaying = true;
       this.monitorPlayback();
-      console.log("▶️  Resumed");
+      console.log(LOG_MESSAGES.PLAYLIST.RESUMED);
     }
   }
 
@@ -328,13 +344,13 @@ export class PlaylistManager {
     try {
       this.player.stop();
     } catch (error) {
-      console.error("Error stopping player:", error);
+      console.error(LOG_MESSAGES.PLAYLIST.STOP_ERROR, error);
     }
 
     this.isPlaying = false;
     this.currentTrackIndex = 0;
     this.isBusy = false;
-    console.log("⏹️  Stopped");
+    console.log(LOG_MESSAGES.PLAYLIST.STOPPED);
   }
 
   /**
@@ -370,7 +386,7 @@ export class PlaylistManager {
     }
 
     console.log(
-      `🗑️  Removed track at index ${index}. Remaining: ${this.tracks.length}`,
+      `🗑️  Removed track at index ${index}. Remaining: ${this.tracks.length}`
     );
     return removed || null;
   }
@@ -380,7 +396,7 @@ export class PlaylistManager {
    */
   setLoop(enabled: boolean): void {
     this.loop = enabled;
-    console.log(`🔄 Loop mode: ${enabled ? "ON" : "OFF"}`);
+    console.log(LOG_MESSAGES.PLAYLIST.LOOP_MODE(enabled));
   }
 
   /**
@@ -442,26 +458,26 @@ export class PlaylistManager {
    */
   on(
     event: "trackStart",
-    callback: (track: Track, index: number) => void,
+    callback: (track: Track, index: number) => void
   ): void;
   on(
     event: "trackEnd",
     callback: (
       track: Track,
       index: number,
-      reason: "completed" | "manual",
-    ) => void,
+      reason: "completed" | "manual"
+    ) => void
   ): void;
   on(event: "playlistEnd", callback: () => void): void;
   on(event: string, callback: any): void {
     switch (event) {
-      case "trackStart":
+      case EVENTS.TRACK_START:
         this.onTrackStart = callback;
         break;
-      case "trackEnd":
+      case EVENTS.TRACK_END:
         this.onTrackEnd = callback;
         break;
-      case "playlistEnd":
+      case EVENTS.PLAYLIST_END:
         this.onPlaylistEnd = callback;
         break;
     }
@@ -472,13 +488,13 @@ export class PlaylistManager {
    */
   removeListener(event: "trackStart" | "trackEnd" | "playlistEnd"): void {
     switch (event) {
-      case "trackStart":
+      case EVENTS.TRACK_START:
         this.onTrackStart = undefined;
         break;
-      case "trackEnd":
+      case EVENTS.TRACK_END:
         this.onTrackEnd = undefined;
         break;
-      case "playlistEnd":
+      case EVENTS.PLAYLIST_END:
         this.onPlaylistEnd = undefined;
         break;
     }
@@ -494,20 +510,20 @@ export class PlaylistManager {
     this.onTrackStart = undefined;
     this.onTrackEnd = undefined;
     this.onPlaylistEnd = undefined;
-    console.log("🗑️  Playlist resources disposed");
+    console.log(LOG_MESSAGES.PLAYLIST.DISPOSED);
   }
 
   /**
    * Helper to wait until the manager is idle
    */
-  private waitForIdle(timeoutMs: number = 2000): Promise<void> {
+  private waitForIdle(timeoutMs: number = TIMING.WAIT_FOR_IDLE_TIMEOUT): Promise<void> {
     return new Promise((resolve) => {
       const start = Date.now();
       const check = () => {
         if (!this.isBusy) {
           resolve();
         } else if (Date.now() - start > timeoutMs) {
-          console.warn("Timeout waiting for idle");
+          console.warn(LOG_MESSAGES.PLAYLIST.TIMEOUT_WAITING);
           resolve();
         } else {
           setTimeout(check, 50);
