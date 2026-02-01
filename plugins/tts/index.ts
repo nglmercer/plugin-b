@@ -1,7 +1,7 @@
 import { pipeline, TextToAudioOutput, TextToAudioPipelineOptions } from '@huggingface/transformers';
+import { detectLanguage } from 'plugins/ai/llmstudio';
 import * as fs from 'fs';
 import * as path from 'path';
-import { lfmInference } from '../ai/lmfa';
 
 // Tipado extendido para los métodos útiles
 interface AudioOutput extends TextToAudioOutput {
@@ -14,7 +14,7 @@ interface AudioOutput extends TextToAudioOutput {
  * Idiomas soportados por el modelo Supertonic
  */
 export type Language = 'en' | 'ko' | 'es' | 'pt' | 'fr';
-
+const SUPPORTED_LANGUAGES: Language[] = ["en", "ko", "es", "pt", "fr"];
 /**
  * Interfaz para opciones de síntesis de voz
  */
@@ -131,7 +131,7 @@ export class TTSService {
         try {
             // Detect language using LFM inference
             const detectedLang = await this.detectLanguage(text);
-            console.log(`[TTSService] Detected language: ${detectedLang}`);
+            console.log(`[TTSService] Detected language: ${detectedLang}`,text);
             
             // Usar directamente las voces de Supertonic (F1-F5, M1-M5)
             const voiceKey = this.validateVoice(voice);
@@ -140,7 +140,7 @@ export class TTSService {
             const speed = this.parseRateToSpeed(options.rate);
             
             // Generate audio
-            const audio = await this.supertonic.speak(text, voiceKey, { 
+            const audio = await this.supertonic.speak(this._preprocessText(text,detectedLang), voiceKey, { 
                 speed: speed,
                 num_inference_steps: 5
             });
@@ -209,42 +209,105 @@ export class TTSService {
             .replace(/[^a-zA-Z0-9]/g, '_')
             .substring(0, 50);
     }
-
+    private isSupportedLanguage(lang: string): lang is Language {
+        return (SUPPORTED_LANGUAGES as string[]).includes(lang);
+    }
     /**
      * Detect language using LFM inference
      * @param text Text to analyze
      * @returns Detected language code (en, ko, es, pt, fr)
      */
     private async detectLanguage(text: string): Promise<Language> {
-        // Ensure LFM model is initialized
-        if (!lfmInference.isInitialized()) {
-            await lfmInference.initialize();
-        }
-
-        const prompt = `Detect the language of the following text and respond with only the language code (en, ko, es, pt, or fr).\n\nText: "${text}"\n\nLanguage code:`;
-
+        let lang:Language | string = "es"
         try {
-            const response = await lfmInference.generate([
-                { role: 'user', content: prompt }
-            ]);
-
-            // Clean up the response and extract language code
-            const langCode = response.trim().toLowerCase().replace(/[^a-z]/g, '');
-
-            // Validate the detected language
-            const validLanguages: Language[] = ['en', 'ko', 'es', 'pt', 'fr'];
-            if (validLanguages.includes(langCode as Language)) {
-                return langCode as Language;
-            }
-
-            // Default to 'en' if detection fails or returns invalid code
-            console.warn(`[TTSService] Invalid language detected: "${langCode}", defaulting to "en"`);
-            return 'en';
+            const result = await detectLanguage(text) 
+            lang = result.language;
         } catch (error) {
-            console.error('[TTSService] Language detection failed:', error);
-            return 'en'; // Default fallback
+            console.log({error})
         }
+        return this.isSupportedLanguage(lang) ? lang : "es"
     }
+    public _preprocessText(text:string, lang:string) {
+        // TODO: Need advanced normalizer for better performance
+        text = text.normalize('NFKD');
+
+        // Remove emojis (wide Unicode range)
+        const emojiPattern = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]+/gu;
+        text = text.replace(emojiPattern, '');
+
+        // Replace various dashes and symbols
+        const replacements = {
+            '–': '-',
+            '‑': '-',
+            '—': '-',
+            '_': ' ',
+            '\u201C': '"',  // left double quote "
+            '\u201D': '"',  // right double quote "
+            '\u2018': "'",  // left single quote '
+            '\u2019': "'",  // right single quote '
+            '´': "'",
+            '`': "'",
+            '[': ' ',
+            ']': ' ',
+            '|': ' ',
+            '/': ' ',
+            '#': ' ',
+            '→': ' ',
+            '←': ' ',
+        };
+        for (const [k, v] of Object.entries(replacements)) {
+            text = text.replaceAll(k, v);
+        }
+
+        // Remove special symbols
+        text = text.replace(/[♥☆♡©\\]/g, '');
+
+        // Replace known expressions
+        const exprReplacements = {
+            '@': ' at ',
+            'e.g.,': 'for example, ',
+            'i.e.,': 'that is, ',
+        };
+        for (const [k, v] of Object.entries(exprReplacements)) {
+            text = text.replaceAll(k, v);
+        }
+
+        // Fix spacing around punctuation
+        text = text.replace(/ ,/g, ',');
+        text = text.replace(/ \./g, '.');
+        text = text.replace(/ !/g, '!');
+        text = text.replace(/ \?/g, '?');
+        text = text.replace(/ ;/g, ';');
+        text = text.replace(/ :/g, ':');
+        text = text.replace(/ '/g, "'");
+
+        // Remove duplicate quotes
+        while (text.includes('""')) {
+            text = text.replace('""', '"');
+        }
+        while (text.includes("''")) {
+            text = text.replace("''", "'");
+        }
+        while (text.includes('``')) {
+            text = text.replace('``', '`');
+        }
+
+        // Remove extra spaces
+        text = text.replace(/\s+/g, ' ').trim();
+
+        // If text doesn't end with punctuation, quotes, or closing brackets, add a period
+        if (!/[.!?;:,'\"')\]}…。」』】〉》›»]$/.test(text)) {
+            text += '.';
+        }
+
+
+        
+        // Wrap text with language tags
+        text = `<${lang}>` + text + `</${lang}>`;
+
+        return text;
+    }
+
 }
 
 // Export individual items for flexibility

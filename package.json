@@ -25,6 +25,7 @@
     "@ai-sdk/openai": "^3.0.12",
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.23.0",
+    "@lmstudio/sdk": "^1.5.0",
     "ai": "^6.0.42",
     "arktype": "^2.1.29",
     "bun_plugins": "1.2.5",
@@ -33,6 +34,7 @@
     "miniaudio_node": "^1.5.1",
     "string-dac": "^1.0.0",
     "trigger_system": "^1.0.6",
-    "webview-napi": "^0.1.8"
+    "webview-napi": "^0.1.8",
+    "zod-to-json-schema": "^3.25.1"
   }
 }
