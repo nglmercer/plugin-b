@@ -42,3 +42,4 @@ plugin-types/*.d.ts
 package-lock.json
 /data
 *.wav
+models/

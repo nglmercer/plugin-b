@@ -234,11 +234,11 @@ export class SupertonicONNX {
             
             if (i > 0) {
                 const silence = new Array(Math.floor(silenceDuration * this.sampleRate)).fill(0);
-                wavCat.push(...silence);
+                wavCat = wavCat.concat(silence);
                 totalDur += silenceDuration;
             }
             
-            wavCat.push(...wav);
+            wavCat = wavCat.concat(wav);
             totalDur += duration[0]!;
         }
         
@@ -293,21 +293,28 @@ export function chunkText(text: string, maxLen = 300): string[] {
 
 /**
  * Load Supertonic voice style from a .bin file
- * The .bin files from HuggingFace contain JSON with style_ttl and style_dp tensors
+ * The .bin files from HuggingFace are raw float32 binary files
+ * Format: [style_ttl: 1*50*256 floats][style_dp: 1*8*16 floats]
+ * Total: 12800 + 128 = 12928 floats = 51712 bytes
  */
 export async function loadVoiceStyle(voiceBinPath: string): Promise<Style> {
-    // Read the .bin file - it's actually JSON
-    const voiceData: VoiceStyleData = JSON.parse(fs.readFileSync(voiceBinPath, 'utf8'));
+    // Read the .bin file as binary
+    const buffer = fs.readFileSync(voiceBinPath);
     
-    const ttlDims = voiceData.style_ttl.dims;
-    const dpDims = voiceData.style_dp.dims;
+    // Convert to Float32Array
+    const floatArray = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
     
-    // Flatten the data
-    const ttlFlat = voiceData.style_ttl.data.flat(Infinity) as number[];
-    const dpFlat = voiceData.style_dp.data.flat(Infinity) as number[];
+    // Voice embeddings: style_ttl [1, 50, 256] and style_dp [1, 8, 16]
+    const ttlSize = 1 * 50 * 256;  // 12800 floats
+    const dpSize = 1 * 8 * 16;     // 128 floats
     
-    const ttlTensor = new ort.Tensor('float32', Float32Array.from(ttlFlat), ttlDims);
-    const dpTensor = new ort.Tensor('float32', Float32Array.from(dpFlat), dpDims);
+    // Extract style_ttl data
+    const ttlData = floatArray.slice(0, ttlSize);
+    const ttlTensor = new ort.Tensor('float32', ttlData, [1, 50, 256]);
+    
+    // Extract style_dp data
+    const dpData = floatArray.slice(ttlSize, ttlSize + dpSize);
+    const dpTensor = new ort.Tensor('float32', dpData, [1, 8, 16]);
     
     return new Style(ttlTensor, dpTensor);
 }
@@ -343,7 +350,86 @@ export async function loadVoiceStyleFromURL(voiceUrl: string, cacheDir?: string)
     return loadVoiceStyle(localPath);
 }
 
+// HuggingFace model repository for auto-download
+const HF_MODEL_REPO = 'https://huggingface.co/Supertone/supertonic-2/resolve/main';
+
+/**
+ * Download a file from HuggingFace if it doesn't exist locally
+ */
+async function downloadModelFile(
+    localPath: string,
+    remoteUrl: string,
+    onProgress?: (downloaded: number, total: number) => void
+): Promise<void> {
+    if (fs.existsSync(localPath)) {
+        return;
+    }
+
+    console.log(`Downloading ${path.basename(localPath)}...`);
+    const response = await fetch(remoteUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to download ${remoteUrl}: ${response.statusText}`);
+    }
+
+    const total = parseInt(response.headers.get('content-length') || '0');
+    const chunks: Uint8Array[] = [];
+    let downloaded = 0;
+
+    if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            downloaded += value.length;
+            if (onProgress && total > 0) {
+                onProgress(downloaded, total);
+            }
+        }
+    }
+
+    // Combine chunks and write to file
+    const data = new Uint8Array(downloaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+        data.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    fs.mkdirSync(path.dirname(localPath), { recursive: true });
+    fs.writeFileSync(localPath, Buffer.from(data));
+    console.log(`Downloaded: ${path.basename(localPath)}`);
+}
+
+/**
+ * Ensure all ONNX model files are available (download if needed)
+ */
+export async function ensureONNXModels(
+    onnxDir: string,
+    onProgress?: (file: string, downloaded: number, total: number) => void
+): Promise<void> {
+    const files = [
+        { name: 'duration_predictor.onnx', path: 'onnx/duration_predictor.onnx' },
+        { name: 'text_encoder.onnx', path: 'onnx/text_encoder.onnx' },
+        { name: 'vector_estimator.onnx', path: 'onnx/vector_estimator.onnx' },
+        { name: 'vocoder.onnx', path: 'onnx/vocoder.onnx' },
+        { name: 'tts.json', path: 'onnx/tts.json' },
+        { name: 'unicode_indexer.json', path: 'onnx/unicode_indexer.json' },
+    ];
+
+    for (const file of files) {
+        const localPath = path.join(onnxDir, file.name);
+        const remoteUrl = `${HF_MODEL_REPO}/${file.path}`;
+        await downloadModelFile(localPath, remoteUrl, (downloaded, total) => {
+            if (onProgress) onProgress(file.name, downloaded, total);
+        });
+    }
+}
+
 export async function loadSupertonicONNX(onnxDir: string): Promise<SupertonicONNX> {
+    // Auto-download models if they don't exist
+    await ensureONNXModels(onnxDir);
+
     const cfgs: Configs = JSON.parse(fs.readFileSync(path.join(onnxDir, 'tts.json'), 'utf8'));
     
     const [dp, textEnc, vector, vocoder] = await Promise.all([

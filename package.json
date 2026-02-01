@@ -31,7 +31,6 @@
     "cheerio": "^1.1.2",
     "install": "^0.13.0",
     "miniaudio_node": "^1.5.1",
-    "onnxruntime-node": "^1.23.2",
     "string-dac": "^1.0.0",
     "trigger_system": "^1.0.6",
     "webview-napi": "^0.1.8"
