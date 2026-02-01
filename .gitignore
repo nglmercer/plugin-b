@@ -5,7 +5,7 @@ node_modules
 out
 dist
 *.tgz
-!webview-rs-0.1.4.tgz
+!webview-napi-0.1.4.tgz
 
 # code coverage
 coverage

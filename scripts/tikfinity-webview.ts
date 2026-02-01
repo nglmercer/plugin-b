@@ -1,4 +1,4 @@
-import { Application } from "webview-rs";
+import { Application } from "webview-napi";
 
 const injectionScript = `
     (function () {

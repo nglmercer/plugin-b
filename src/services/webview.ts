@@ -1,4 +1,4 @@
-import { Application } from "webview-rs";
+import { Application } from "webview-napi";
 import { definePlugin, Plugin, PluginContext } from "bun_plugins";
 /* import { getRoomId } from "./tiktok/utils.ts"
 

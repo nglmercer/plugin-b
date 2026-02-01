@@ -21,19 +21,19 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "ai": "^6.0.42",
     "@ai-sdk/deepseek": "^2.0.8",
     "@ai-sdk/openai": "^3.0.12",
-    "arktype": "^2.1.29",
     "@andresaya/edge-tts": "^1.8.0",
     "@huggingface/transformers": "^3.8.1",
     "@lancedb/lancedb": "^0.23.0",
+    "ai": "^6.0.42",
+    "arktype": "^2.1.29",
     "bun_plugins": "1.2.5",
     "cheerio": "^1.1.2",
     "install": "^0.13.0",
-    "miniaudio_node": "^1.0.4",
+    "miniaudio_node": "^1.5.1",
     "string-dac": "^1.0.0",
     "trigger_system": "^1.0.6",
-    "webview-rs": "https://github.com/nglmercer/webview-rs/releases/download/v0.0.3/webview-rs-0.1.4.tgz"
+    "webview-napi": "^0.1.8"
   }
 }
