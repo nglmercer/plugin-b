@@ -10,6 +10,10 @@ import {
   LOG_MESSAGES,
   AUDIO,
 } from "../src/constants";
+import { VOICES } from "./tts/index"; 
+import { responde } from "./ai/generator";
+// Valid voice keys from Supertonic
+const VALID_VOICE_KEYS = Object.keys(VOICES);
 
 export class TTSPlugin implements IPlugin {
   name = "tts-service";
@@ -26,14 +30,21 @@ export class TTSPlugin implements IPlugin {
   /**
    * Helper to get a config value, creating it with default if it doesn't exist.
    * This ensures the storage file is actually populated with the default structure.
+   * Also validates that the voice is valid and resets to default if invalid.
    */
-  private async getOrCreateConfig<T>(
+  private async getOrCreateConfig<T extends { voice?: string }>(
     storage: any,
     key: string,
     defaultValue: T
   ): Promise<T> {
     const existing = await storage.get(key);
     if (existing !== undefined && existing !== null) {
+      // Validate voice if it exists in the config
+      if (existing.voice && !VALID_VOICE_KEYS.includes(existing.voice)) {
+        console.log(`[${this.name}] Invalid voice "${existing.voice}" detected, resetting to default: ${defaultValue.voice}`);
+        existing.voice = defaultValue.voice;
+        await storage.set(key, existing);
+      }
       return existing as T;
     }
     console.log(LOG_MESSAGES.TTS.INITIALIZING_STORAGE(this.name, key));
@@ -56,6 +67,8 @@ export class TTSPlugin implements IPlugin {
   }
 
   async onLoad(context: PluginContext) {
+    //#temp
+    //#end
     const { storage, log, getPlugin } = context;
     console.log(`${this.name} initialized`);
     const allVoices = await this.getOrCreateVoices(storage, STORAGE_KEYS.VOICES, []);
@@ -82,16 +95,18 @@ export class TTSPlugin implements IPlugin {
     registry.register(ACTIONS.TTS, async (action, ctx) => {
       console.log(`[${ACTIONS.TTS}]`, action, Object.keys(ctx));
       if (!action.params?.message) return;
-      const result = await TTScleaner.processMessage(String(action.params?.message));
+      let result = await TTScleaner.processMessage(String(action.params?.message));
       if (!result?.cleanedText) return;
-
+      if (String(action.params?.message).includes('ai')){
+        result = await TTScleaner.processMessage(await responde(String(action.params?.message)))
+      }
       // Save last message
       await storage.set(STORAGE_KEYS.LAST_MESSAGE, result.cleanedText);
 
       const currentConfig = (await storage.get(STORAGE_KEYS.TTS_CONFIG, defaults)) || defaults;
 
       const ttsdata = await this.ttsService.synthesize(
-        result?.cleanedText,
+        result.cleanedText,
         currentConfig.voice, // Use configured voice
         result?.cleanedText,
         {

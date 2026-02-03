@@ -33,6 +33,7 @@
     "install": "^0.13.0",
     "miniaudio_node": "^1.5.1",
     "string-dac": "^1.0.0",
+    "tray-icon-node": "^0.1.1",
     "trigger_system": "^1.0.6",
     "webview-napi": "^0.1.8",
     "zod-to-json-schema": "^3.25.1"

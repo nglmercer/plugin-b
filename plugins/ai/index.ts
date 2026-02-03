@@ -1,49 +1,140 @@
-// index.ts
-// optional: import 'dotenv/config';
-import { HybridRAG } from './rag-service';
+// plugins/ai/index.ts - Reusable AI module exports
+export * from "./constants";
 
-async function main() {
-  const rag = new HybridRAG("docs_v3");
-  await rag.initialize();
+// Model manager exports
+import {
+  initializeLMStudio,
+  isLMStudioAvailable,
+  getInitializationError,
+  getEmbeddingModel,
+  getLLMModel,
+  withEmbeddingModel,
+  withLLMModel,
+  resetModelManager,
+} from "./model-manager";
+export {
+  initializeLMStudio,
+  isLMStudioAvailable,
+  getInitializationError,
+  getEmbeddingModel,
+  getLLMModel,
+  withEmbeddingModel,
+  withLLMModel,
+  resetModelManager,
+};
 
-  const documentationDocs = [
-    // --- DISTRACTOR PELIGROSO (Versión Antigua) ---
-    // Si la IA usa esto, fallará porque usa 'connect()' en lugar de 'init()'
-    `[DEPRECATED] FluxDB v1.0 Documentation:
-     To connect to the database, use the syntax: 
-     const db = new FluxDB();
-     db.connect("user", "password");
-     Note: This version reached EOL in 2023.`,
+// Database exports
+import {
+  initializeDatabase,
+  isDatabaseAvailable,
+  addDocuments,
+  searchDocuments,
+  getDocumentById,
+  deleteDocument,
+  getAllDocuments,
+  getDocumentCount,
+  resetDatabase,
+  type DocumentRecord,
+} from "./lancedb-store";
+export {
+  initializeDatabase,
+  isDatabaseAvailable,
+  addDocuments,
+  searchDocuments,
+  getDocumentById,
+  deleteDocument,
+  getAllDocuments,
+  getDocumentCount,
+  resetDatabase,
+  type DocumentRecord,
+};
 
-    // --- INFORMACIÓN REAL PARTE 1 (Método de Autenticación v2) ---
-    `[CURRENT] FluxDB v2.5 Reference Guide - Authentication:
-     Breaking Change: v2.x removes the connect() method. 
-     You must now use the static factory: FluxDB.init({ apiKey: "sk_..." }).
-     Do not pass username/password directly.`,
+// Generator export
+export { responde } from "./generator";
 
-    // --- INFORMACIÓN REAL PARTE 2 (Configuración de Región) ---
-    `[CURRENT] FluxDB v2.5 - Advanced Configuration:
-     By default, the client connects to 'us-east'. 
-     To force a connection to the European cluster, you must add the property 
-     'region: "eu-central"' inside the init object options.`,
-
-    // --- DISTRACTOR IRRELEVANTE (Ruido semántico) ---
-    `Internal Team Chat log:
-     Dev1: Hey, I can't connect to FluxDB.
-     Dev2: Did you try restarting your router? The region is usually the issue.
-     Dev1: No, I was just out of coffee.`,
-  ];
-
-  console.log("📥 Loading documents...");
-  await rag.addDocuments(documentationDocs);
-
-  console.log("🔍 Querying...");
-  const answer = await rag.query(
-    "Write a JavaScript code snippet to initialize FluxDB v2.5 for Europe."
-  );
-
-  console.log("\n--- AI RESPONSE ---");
-  console.log(answer);
+/**
+ * Initialize the AI module (LM Studio + LanceDB)
+ * Returns true if both are available, false otherwise
+ */
+export async function initializeAI(): Promise<{
+  lmStudio: boolean;
+  database: boolean;
+}> {
+  const [lmStudio, database] = await Promise.all([
+    initializeLMStudio(),
+    initializeDatabase(),
+  ]);
+  
+  return { lmStudio, database };
 }
 
-main().catch(console.error);
+/**
+ * Check if AI module is fully available
+ */
+export function isAIAvailable(): boolean {
+  return isLMStudioAvailable() && isDatabaseAvailable();
+}
+
+/**
+ * Basic test for checking AI module response
+ */
+async function testAI() {
+  console.log("[AI Module] Starting AI module test...\n");
+  
+  // Test initialization
+  console.log("[AI Module] Testing initialization...");
+  const { lmStudio, database } = await initializeAI();
+  
+  console.log(`[AI Module] LM Studio available: ${lmStudio}`);
+  console.log(`[AI Module] Database available: ${database}`);
+  
+  if (lmStudio) {
+    // Test embedding
+    console.log("\n[AI Module] Testing embedding...");
+    const embedding = await withEmbeddingModel(
+      async (model) => {
+        const result = await model.embed("Hello, world!");
+        return result.embedding.length;
+      },
+      0
+    );
+    console.log(`[AI Module] Embedding dimension: ${embedding}`);
+    
+    // Test language detection
+    console.log("\n[AI Module] Testing language detection...");
+    const detection = await withLLMModel(
+      async (model) => {
+        const result = await model.respond([
+          { role: "system", content: "Respond with JSON: {language: string}" },
+          { role: "user", content: "Hola, cómo estás?" }
+        ], { temperature: 0.1 });
+        return result.content;
+      },
+      '{"language": "unavailable"}'
+    );
+    console.log(`[AI Module] Language detection response: ${detection}`);
+  } else {
+    console.warn("\n[AI Module] LM Studio not available, skipping model tests");
+    const error = getInitializationError();
+    if (error) {
+      console.warn(`[AI Module] Error: ${error.message}`);
+    }
+  }
+  
+  if (database) {
+    console.log("\n[AI Module] Testing database...");
+    const count = await getDocumentCount();
+    console.log(`[AI Module] Document count: ${count}`);
+  } else {
+    console.warn("[AI Module] Database not available");
+  }
+  
+  console.log("\n[AI Module] Test completed!");
+}
+
+// Run test if this file is executed directly
+if (import.meta.main) {
+  testAI();
+}
+
+export { testAI };

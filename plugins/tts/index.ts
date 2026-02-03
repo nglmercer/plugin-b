@@ -1,5 +1,5 @@
 import { pipeline, TextToAudioOutput, TextToAudioPipelineOptions } from '@huggingface/transformers';
-import { detectLanguage } from 'plugins/ai/llmstudio';
+import { detectLanguage,type DetectionResult } from 'plugins/ai/llmstudio';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -130,7 +130,8 @@ export class TTSService {
     ): Promise<{ savedPath: string; fileBuffer: Buffer; detectedLanguage: Language }> {
         try {
             // Detect language using LFM inference
-            const detectedLang = await this.detectLanguage(text);
+            const _raw = await this.processmsg(text)
+            const detectedLang = await this.detectLanguage(_raw?.language);
             console.log(`[TTSService] Detected language: ${detectedLang}`,text);
             
             // Usar directamente las voces de Supertonic (F1-F5, M1-M5)
@@ -140,7 +141,7 @@ export class TTSService {
             const speed = this.parseRateToSpeed(options.rate);
             
             // Generate audio
-            const audio = await this.supertonic.speak(this._preprocessText(text,detectedLang), voiceKey, { 
+            const audio = await this.supertonic.speak(this._preprocessText(_raw?.summary || text,detectedLang), voiceKey, { 
                 speed: speed,
                 num_inference_steps: 5
             });
@@ -217,15 +218,18 @@ export class TTSService {
      * @param text Text to analyze
      * @returns Detected language code (en, ko, es, pt, fr)
      */
-    private async detectLanguage(text: string): Promise<Language> {
-        let lang:Language | string = "es"
+    private async detectLanguage(lang: string='es'): Promise<Language> {
+        return this.isSupportedLanguage(lang) ? lang : "es"
+    }
+    private async processmsg(text:string){
+        let result;
         try {
-            const result = await detectLanguage(text) 
-            lang = result.language;
+             result = await detectLanguage(text) 
+            return result;
         } catch (error) {
             console.log({error})
+            result
         }
-        return this.isSupportedLanguage(lang) ? lang : "es"
     }
     public _preprocessText(text:string, lang:string) {
         // TODO: Need advanced normalizer for better performance
@@ -261,16 +265,6 @@ export class TTSService {
 
         // Remove special symbols
         text = text.replace(/[♥☆♡©\\]/g, '');
-
-        // Replace known expressions
-        const exprReplacements = {
-            '@': ' at ',
-            'e.g.,': 'for example, ',
-            'i.e.,': 'that is, ',
-        };
-        for (const [k, v] of Object.entries(exprReplacements)) {
-            text = text.replaceAll(k, v);
-        }
 
         // Fix spacing around punctuation
         text = text.replace(/ ,/g, ',');

@@ -1,57 +1,75 @@
-// embedding.ts
-import { Float32 } from "apache-arrow";
-import {
-  AutoModel,
-  AutoTokenizer,
-  type PreTrainedModel,
-  type PreTrainedTokenizer,
-} from "@huggingface/transformers";
-import { EmbeddingFunction, register } from "@lancedb/lancedb/embedding";
+// embedding.ts - Embedding utilities with try-catch for LM Studio
+import { getEmbeddingModel, withEmbeddingModel } from "./model-manager";
 import { CONFIG } from "./constants";
-@register("GemmaEmbeddingFunction")
-export class GemmaEmbeddingFunction extends EmbeddingFunction<string> {
-  sourceColumn = "text";
-  vectorColumn = "vector";
 
-  private modelId = CONFIG.MODELS.EMBEDDING;
-  private tokenizer: PreTrainedTokenizer | null = null;
-  private model: PreTrainedModel | null = null;
+/**
+ * Generate embedding for text using LM Studio
+ * Returns null if LM Studio is not available
+ */
+export async function embedText(text: string): Promise<number[] | null> {
+  return withEmbeddingModel(
+    async (model) => {
+      const result = await model.embed(text);
+      return result.embedding;
+    },
+    null // fallback value
+  );
+}
 
-  private readonly prefixes = CONFIG.PREFIXES;
+/**
+ * Generate embeddings for multiple texts
+ * Returns empty array if LM Studio is not available
+ */
+export async function embedTexts(texts: string[]): Promise<number[][] | null> {
+  return withEmbeddingModel(
+    async (model) => {
+      const results = await Promise.all(
+        texts.map((text) => model.embed(text))
+      );
+      return results.map((r) => r.embedding);
+    },
+    null
+  );
+}
 
-  constructor() {
-    super();
+/**
+ * Simple embedding test
+ */
+async function testEmbedding() {
+  console.log("[Embedding] Testing embedding model...");
+  
+  const model = await getEmbeddingModel();
+  if (!model) {
+    console.warn("[Embedding] LM Studio not available, skipping test");
+    return;
   }
-
-  override embeddingDataType() {
-    return new Float32();
-  }
-
-  override async init() {
-    if (this.model) return;
+  
+  try {
+    const testTexts = [
+      "Hello, world!",
+      "Hola, mundo!",
+      "Bonjour, le monde!"
+    ];
     
-    this.tokenizer = await AutoTokenizer.from_pretrained(this.modelId);
-    this.model = await AutoModel.from_pretrained(this.modelId, { dtype: "q8" });
-  }
-
-  private async computeEmbedding(texts: string[], prefix: string): Promise<number[][]> {
-    await this.init();
-    const prefixedTexts = texts.map((t) => prefix + t);
-
-    // @ts-ignore
-    const inputs = await this.tokenizer!(prefixedTexts, { padding: true, truncation: true });
-    // @ts-ignore
-    const { sentence_embedding } = await this.model!(inputs);
-
-    return sentence_embedding.tolist();
-  }
-
-  override async computeSourceEmbeddings(data: string[]): Promise<number[][]> {
-    return this.computeEmbedding(data, this.prefixes.DOCUMENT);
-  }
-
-  override async computeQueryEmbeddings(data: string): Promise<number[]> {
-    const embeddings = await this.computeEmbedding([data], this.prefixes.QUERY);
-    return embeddings[0] || [];
+    for (const text of testTexts) {
+      console.log(`[Embedding] Testing: "${text.substring(0, 30)}..."`);
+      const embedding = await embedText(text);
+      if (embedding) {
+        console.log(`[Embedding] Generated embedding with ${embedding.length} dimensions`);
+      } else {
+        console.warn("[Embedding] Failed to generate embedding");
+      }
+    }
+    
+    console.log("[Embedding] Test completed");
+  } catch (error) {
+    console.error("[Embedding] Test error:", error);
   }
 }
+
+// Run test if this file is executed directly
+if (import.meta.main) {
+  testEmbedding();
+}
+
+export { testEmbedding };

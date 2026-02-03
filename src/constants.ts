@@ -183,6 +183,12 @@ export const ACTIONS = {
   TTS: "TTS",
   LAST_COMMENT: "lastcomment",
   MC: "mc",
+  // New evaluation actions
+  EVALUATE: "evaluate",
+  EVALUATE_AND_SPEAK: "evaluate_and_speak",
+  DATETIME: "datetime",
+  TTS_DIRECT: "tts_direct",
+  AI_RESPOND: "ai_respond",
 } as const;
 
 // ============================================================================
