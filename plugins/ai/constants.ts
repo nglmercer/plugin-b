@@ -5,8 +5,8 @@ export const CONFIG = {
   DB_URI: "data/lancedb-store",
   TABLE_NAME: "knowledge_base",
   MODELS: {
-    EMBEDDING: "onnx-community/embeddinggemma-300m-ONNX",
-    CHAT: "deepseek-chat"
+    EMBEDDING: "text-embedding-granite-embedding-278m-multilingual",
+    CHAT: "lfm2.5-vl-1.6b"
   },
   PREFIXES: {
     QUERY: "task: search result | query: ",

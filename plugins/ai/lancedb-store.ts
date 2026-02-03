@@ -1,5 +1,5 @@
 // lancedb-store.ts - LanceDB storage for embeddings and documents
-import lancedb from "@lancedb/lancedb";
+import lancedb, { type Connection, type Table, type SchemaLike } from "@lancedb/lancedb";
 import type { EmbeddingModel } from "@lmstudio/sdk";
 import { CONFIG } from "./constants";
 import * as path from "path";
@@ -15,8 +15,24 @@ export interface DocumentRecord {
   createdAt: Date;
 }
 
-let db: any = null;
-let table: any = null;
+// Define the schema using FieldLike objects (type-safe without needing Arrow imports)
+const documentSchema: SchemaLike = {
+  fields: [
+    { type: "utf8", name: "id", nullable: false },
+    { type: "utf8", name: "title", nullable: false },
+    { type: "utf8", name: "content", nullable: false },
+    { type: `fixed_size_list<${768}, float32>`, name: "embedding", nullable: false },
+    { type: "null", name: "metadata", nullable: true },
+    { type: "timestamp[ms]", name: "createdAt", nullable: false },
+  ],
+  metadata: new Map(),
+  get names() {
+    return ["id", "title", "content", "embedding", "metadata", "createdAt"];
+  },
+};
+
+let db: Connection | null = null;
+let table: Table | null = null;
 let isInitialized = false;
 
 /**
@@ -39,16 +55,10 @@ export async function initializeDatabase(): Promise<boolean> {
     // Create table if it doesn't exist
     const tableNames = await db.tableNames();
     if (!tableNames.includes(CONFIG.TABLE_NAME)) {
-      table = await db.createEmptyTable(CONFIG.TABLE_NAME, [
-        { name: "id", type: "utf8" },
-        { name: "title", type: "utf8" },
-        { name: "content", type: "utf8" },
-        { name: "embedding", type: "vector", vectorDimensions: 768 },
-        { name: "metadata", type: "json", nullable: true },
-        { name: "createdAt", type: "timestamp" },
-      ]);
+      // Create empty table with proper schema
+      table = await db.createEmptyTable(CONFIG.TABLE_NAME, documentSchema);
     } else {
-      table = db.openTable(CONFIG.TABLE_NAME);
+      table = await db.openTable(CONFIG.TABLE_NAME);
     }
     
     isInitialized = true;
@@ -68,21 +78,13 @@ export function isDatabaseAvailable(): boolean {
 }
 
 /**
- * Get embedding dimension from model
- */
-async function getEmbeddingDimension(model: EmbeddingModel): Promise<number> {
-  const testEmbedding = await model.embed("test");
-  return testEmbedding.embedding.length;
-}
-
-/**
  * Add documents to the database with embeddings
  */
 export async function addDocuments(
   documents: Array<{ id: string; title: string; content: string; metadata?: Record<string, unknown> }>,
   embeddingModel: EmbeddingModel | null
 ): Promise<boolean> {
-  if (!isDatabaseAvailable()) {
+  if (!isDatabaseAvailable() || !table) {
     console.warn("[LanceDBStore] Database not available");
     return false;
   }
@@ -104,7 +106,7 @@ export async function addDocuments(
       title: doc.title,
       content: doc.content,
       embedding: embeddings[index]?.embedding ?? [],
-      metadata: doc.metadata || null,
+      metadata: doc.metadata ?? null,
       createdAt: new Date(),
     }));
     
@@ -127,7 +129,7 @@ export async function searchDocuments(
   embeddingModel: EmbeddingModel | null,
   limit: number = 10
 ): Promise<Array<{ id: string; title: string; content: string; score: number }>> {
-  if (!isDatabaseAvailable() || !embeddingModel) {
+  if (!isDatabaseAvailable() || !embeddingModel || !table) {
     console.warn("[LanceDBStore] Database or embedding model not available");
     return [];
   }
@@ -140,7 +142,7 @@ export async function searchDocuments(
       .limit(limit)
       .toArray();
     
-    return results.map((row: any) => ({
+    return results.map((row) => ({
       id: row.id,
       title: row.title,
       content: row.content,
@@ -153,15 +155,15 @@ export async function searchDocuments(
 }
 
 /**
- * Get document by ID
+ * Get document by ID using SQL query
  */
 export async function getDocumentById(id: string): Promise<DocumentRecord | null> {
-  if (!isDatabaseAvailable()) {
+  if (!isDatabaseAvailable() || !table) {
     return null;
   }
   
   try {
-    const results = await table.filter(`id == "${id}"`).toArray();
+    const results = await table.query().where(`id = '${id}'`).toArray();
     if (results.length === 0) return null;
     
     const row = results[0];
@@ -183,12 +185,12 @@ export async function getDocumentById(id: string): Promise<DocumentRecord | null
  * Delete document by ID
  */
 export async function deleteDocument(id: string): Promise<boolean> {
-  if (!isDatabaseAvailable()) {
+  if (!isDatabaseAvailable() || !table) {
     return false;
   }
   
   try {
-    await table.delete(`id == "${id}"`);
+    await table.delete(`id = '${id}'`);
     console.log(`[LanceDBStore] Deleted document: ${id}`);
     return true;
   } catch (error) {
@@ -198,16 +200,16 @@ export async function deleteDocument(id: string): Promise<boolean> {
 }
 
 /**
- * Get all documents
+ * Get all documents using SQL query
  */
 export async function getAllDocuments(): Promise<DocumentRecord[]> {
-  if (!isDatabaseAvailable()) {
+  if (!isDatabaseAvailable() || !table) {
     return [];
   }
   
   try {
-    const results = await table.toArray();
-    return results.map((row: any) => ({
+    const results = await table.query().toArray();
+    return results.map((row) => ({
       id: row.id,
       title: row.title,
       content: row.content,
@@ -225,13 +227,13 @@ export async function getAllDocuments(): Promise<DocumentRecord[]> {
  * Get document count
  */
 export async function getDocumentCount(): Promise<number> {
-  if (!isDatabaseAvailable()) {
+  if (!isDatabaseAvailable() || !table) {
     return 0;
   }
   
   try {
-    const count = await table.countRows();
-    return count;
+    const results = await table.query().toArray();
+    return results.length;
   } catch (error) {
     console.error("[LanceDBStore] Failed to count documents:", error);
     return 0;

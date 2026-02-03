@@ -13,24 +13,114 @@ let initializationError: Error | null = null;
  * Initialize LM Studio client with error handling
  * Returns true if successful, false if LM Studio is not available
  */
-export async function initializeLMStudio(): Promise<boolean> {
+export async function initializeLMStudio(timeoutMs: number = 5000): Promise<boolean> {
   if (isInitialized) return initializationError === null;
   
+  // Store original functions to prevent SDK from crashing the app
+  const originalError = console.error;
+  let exitCalled = false;
+  let rejectionHandled = false;
+  
+
+  
+  // Override console.error to suppress SDK's boxed error messages during init
+  console.error = ((...args: unknown[]) => {
+    const message = String(args[0] || '');
+    // Suppress LM Studio SDK errors during initialization
+    if (message.includes('LM Studio') || message.includes('Failed to connect')) {
+      return;
+    }
+    originalError.apply(console, args as never[]);
+  }) as typeof console.error;
+  
+  // Track unhandled rejections from SDK
+  const rejectionHandler = (reason: unknown) => {
+    if (!rejectionHandled) {
+      rejectionHandled = true;
+      const msg = reason instanceof Error ? reason.message : String(reason);
+      if (!msg.includes('LM Studio') && !msg.includes('Failed to connect')) {
+        originalError("[ModelManager] Unhandled rejection:", reason);
+      }
+    }
+  };
+  process.on("unhandledRejection", rejectionHandler);
+  
+  // Track uncaught exceptions
+  let exceptionHandled = false;
+  const exceptionHandler = (error: Error) => {
+    if (!exceptionHandled) {
+      exceptionHandled = true;
+      const msg = error.message;
+      if (!msg.includes('LM Studio') && !msg.includes('Failed to connect')) {
+        originalError("[ModelManager] Uncaught exception:", error);
+      }
+    }
+  };
+  process.on("uncaughtException", exceptionHandler);
+  
+  let initResult = false;
+  let initError: Error | null = null;
+  
+  // Run initialization in a separate promise with timeout
+  const initPromise = (async () => {
+    try {
+      client = new LMStudioClient();
+      
+      // Test connection by attempting to load a model (lightweight check)
+      await client.embedding.model(CONFIG.MODELS.EMBEDDING);
+      
+      isInitialized = true;
+      initializationError = null;
+      console.log("[ModelManager] LM Studio initialized successfully");
+      initResult = true;
+    } catch (error) {
+      initError = error instanceof Error ? error : new Error(String(error));
+      console.warn("[ModelManager] LM Studio not available:", initError.message);
+      initResult = false;
+    }
+  })();
+  
+  // Create a timeout promise
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("LM Studio initialization timed out"));
+    }, timeoutMs);
+  });
+  
   try {
-    client = new LMStudioClient();
-    
-    // Test connection by attempting to load a model (lightweight check)
-    await client.embedding.model(CONFIG.MODELS.EMBEDDING);
-    
-    isInitialized = true;
-    initializationError = null;
-    console.log("[ModelManager] LM Studio initialized successfully");
-    return true;
+    await Promise.race([initPromise, timeoutPromise]);
   } catch (error) {
-    initializationError = error instanceof Error ? error : new Error(String(error));
-    console.warn("[ModelManager] LM Studio not available:", initializationError.message);
-    return false;
+    if (error instanceof Error && error.message === "LM Studio initialization timed out") {
+      console.warn("[ModelManager] LM Studio initialization timed out");
+      initError = error;
+      initResult = false;
+    } else {
+      throw error;
+    }
+  } finally {
+    // Restore original functions
+    console.error = originalError;
+    
+    // Remove event handlers
+    process.off("unhandledRejection", rejectionHandler);
+    process.off("uncaughtException", exceptionHandler);
+    
+    // If exit was called or rejection/exception was handled, mark as failed
+    if (exitCalled || rejectionHandled || exceptionHandled) {
+      initializationError = new Error("LM Studio SDK initialization failed - service not available");
+      isInitialized = false;
+      client = null;
+    } else if (initError) {
+      initializationError = initError;
+    }
+    
+    if (!initResult) {
+      isInitialized = false;
+      client = null;
+    }
   }
+  
+  return initResult;
 }
 
 /**

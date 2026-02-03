@@ -79,6 +79,9 @@ export function isAIAvailable(): boolean {
  * Basic test for checking AI module response
  */
 async function testAI() {
+    try {
+        
+
   console.log("[AI Module] Starting AI module test...\n");
   
   // Test initialization
@@ -130,6 +133,12 @@ async function testAI() {
   }
   
   console.log("\n[AI Module] Test completed!");
+    } catch (error) {
+        
+    }
+    setTimeout(function a(){
+    console.log("timeout")
+  },5000)
 }
 
 // Run test if this file is executed directly
