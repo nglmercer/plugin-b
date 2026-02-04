@@ -42,13 +42,12 @@ export default definePlugin({
 
     // Escuchar la salida del proceso hijo para recibir el payload
     if (webviewProcess.stdout) {
-      webviewProcess.stdout.on("data", (data:string) => {
-        
+      webviewProcess.stdout.on("data", (data) => {
         const output = data.toString();
-        
+        console.log(TIKTOK_CONSTANTS.EVENT_MESSAGE, output);
+
         // Verificar si es el payload de TikFinity
         if (output.includes(TIKTOK_CONSTANTS.PAYLOAD_PREFIX)) {
-          console.log(TIKTOK_CONSTANTS.EVENT_MESSAGE, output);
           const payload = output.replace(TIKTOK_CONSTANTS.PAYLOAD_PREFIX, "").trim();
 
           // Si ya existe una conexión activa, actualizar el payload (cambiar de canal)
@@ -58,10 +57,9 @@ export default definePlugin({
             return;
           }
 
+          // Cerrar conexión anterior si existe pero no está conectada
           if (wsConnection) {
-            console.log(LOG_MESSAGES.TIKFINITY.CONNECTION_EXISTS);
-            wsConnection.updatePayload(payload);
-            return;
+            wsConnection.disconnect();
           }
 
           connect(payload, (message) => {
@@ -88,10 +86,6 @@ export default definePlugin({
           });
 
           webviewClosed = true;
-        } else {
-          
-          
-          //wsConnection?.socket?.send(output)
         }
       });
     }
