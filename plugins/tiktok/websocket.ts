@@ -17,7 +17,7 @@ interface ConnectionOptions {
 }
 
 class TikTokWebSocket {
-  private socket: WebSocket | null = null;
+  public socket: WebSocket | null = null;
   private payload: string;
   private emitter?: Emitter;
   private options: Required<ConnectionOptions>;
@@ -25,6 +25,8 @@ class TikTokWebSocket {
   private reconnectTimer: Timer | null = null;
   private isManuallyClosed = false;
   private iomsg = TIKTOK_CONSTANTS.ENGINE_IO_MESSAGE;
+  private heartbeatTimer: Timer | null = null;
+  private isEngineIoOpen = false;
 
   constructor(payload: string, emitter?: Emitter, options: ConnectionOptions = {}) {
     this.payload = payload;
@@ -53,23 +55,32 @@ class TikTokWebSocket {
     this.socket.onopen = () => {
       console.log(LOG_MESSAGES.WEBSOCKET.OPEN);
       this.reconnectAttempts = 0;
+      this.isEngineIoOpen = false;
 
-      // Enviar mensaje de conexión de Engine.io
-      this.socket?.send(this.iomsg);
-
-      // Enviar el evento específico después de un delay
-      setTimeout(() => {
-        this.socket?.send(this.payload);
-        console.log(LOG_MESSAGES.WEBSOCKET.PAYLOAD_SENT);
-      }, TIMING.PAYLOAD_SEND_DELAY);
+      // Iniciar Heartbeat automático
+      this.startHeartbeat();
     };
 
     this.socket.onmessage = (event) => {
       this.emitter?.(event.data);
 
-      // Manejo de PING/PONG (Socket.io lo requiere para no desconectarse)
-      if (event.data === TIKTOK_CONSTANTS.PING_MESSAGE) {
-        this.socket?.send(TIKTOK_CONSTANTS.PONG_MESSAGE);
+      // Manejo de Heartbeat Socket.io (paquete tipo 2)
+      const data = event.data;
+      if (data === '2' || data === '2"probe"' || data.startsWith('2')) {
+        this.socket?.send('3'); // Pong response
+        return;
+      }
+
+      // Detectar cuando el servidor confirmó la conexión (paquete 40)
+      if (data === '40' || data.startsWith('40')) {
+        this.isEngineIoOpen = true;
+        // Enviar el payload después de que el servidor confirmó
+        setTimeout(() => {
+          if (this.socket?.readyState === WebSocket.OPEN) {
+            this.socket?.send(this.payload);
+            console.log(LOG_MESSAGES.WEBSOCKET.PAYLOAD_SENT);
+          }
+        }, TIMING.PAYLOAD_SEND_DELAY);
       }
     };
 
@@ -78,7 +89,7 @@ class TikTokWebSocket {
     };
 
     this.socket.onclose = (event) => {
-      console.log({ closed: event });
+      console.log(event.reason,event.code);
 
       this.socket = null;
 
@@ -114,8 +125,28 @@ class TikTokWebSocket {
     }, finalDelay);
   }
 
+  private startHeartbeat(): void {
+    // Detener heartbeat anterior si existe
+    this.stopHeartbeat();
+
+    // Enviar heartbeat cada 20 segundos (intervalo recomendado para Socket.io)
+    this.heartbeatTimer = setInterval(() => {
+      if (this.socket?.readyState === WebSocket.OPEN && this.isEngineIoOpen) {
+        this.socket?.send('2');
+      }
+    }, 20000);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
   disconnect(): void {
     this.isManuallyClosed = true;
+    this.stopHeartbeat();
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -136,15 +167,9 @@ class TikTokWebSocket {
 
   updatePayload(newPayload: string): void {
     this.payload = newPayload;
-
-    if (this.isConnected()) {
-      console.log(LOG_MESSAGES.WEBSOCKET.UPDATING_PAYLOAD);
-      this.socket?.send(newPayload);
-      console.log(LOG_MESSAGES.WEBSOCKET.NEW_PAYLOAD_SENT);
-    } else {
-      console.log(LOG_MESSAGES.WEBSOCKET.NOT_CONNECTED);
-      this.connect();
-    }
+    console.log(LOG_MESSAGES.WEBSOCKET.UPDATING_PAYLOAD);
+    this.socket?.send(newPayload);
+    console.log(LOG_MESSAGES.WEBSOCKET.NEW_PAYLOAD_SENT);
   }
 }
 

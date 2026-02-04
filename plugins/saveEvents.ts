@@ -29,7 +29,7 @@ export class saveDataPlugin implements IPlugin {
           if (!eventName || !data) {
             return;
           }
-          this.context?.storage.set(`${platform}:${eventName}`,data)
+          Bun.write(`./data/${eventName}.json`,data)
         });
       });
   }
