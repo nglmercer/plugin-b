@@ -3,7 +3,7 @@ import { PLUGIN_NAMES, ACTIONS, HELPERS,PLATFORMS } from "../src/constants";
 import { getRegistryPlugin } from "./Interface/ActionRegistryApi";
 
 export class saveDataPlugin implements IPlugin {
-  name = PLUGIN_NAMES.RULE_TESTER;
+  name = PLUGIN_NAMES.SAVE_EVENTS;
   version = "1.0.0";
   private context?: PluginContext;
   private save?: boolean = true;
@@ -21,8 +21,8 @@ export class saveDataPlugin implements IPlugin {
       }else {this.save = false}
       return this.save;
     });
+      console.log(this.name, Object.values(PLATFORMS));
       Object.values(PLATFORMS).forEach((platform) => {
-        console.log("events", platform);
         this.context?.on(platform, ({ eventName, data }) => {
           //console.log({ eventName, data });
           if (!this.save)return;

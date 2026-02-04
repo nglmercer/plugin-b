@@ -17,8 +17,8 @@ async function main() {
   )) as ActionRegistryPlugin;
   const pluginHelpers = registryPlugin.Helpers || {};
 
+  console.log("[MAIN]", Object.values(PLATFORMS));
   Object.values(PLATFORMS).forEach((platform) => {
-    console.log("events", platform);
     manager.on(platform, ({ eventName, data }) => {
       //console.log({ eventName, data });
       if (!eventName || !data) {

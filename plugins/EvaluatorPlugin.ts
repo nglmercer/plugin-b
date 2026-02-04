@@ -24,7 +24,7 @@ export type EvaluationDecision =
   | { decision: "ignore"; reason: string };
 
 export class EvaluatorPlugin implements IPlugin {
-  name = "evaluator-service";
+  name = "TTSService";
   version = "1.0.0";
   private ttsService: TTSService;
   private playlist: PlaylistManager;

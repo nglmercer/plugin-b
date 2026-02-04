@@ -23,10 +23,10 @@ export type Platform = (typeof PLATFORMS)[keyof typeof PLATFORMS];
 
 export const PLUGIN_NAMES = {
   ACTION_REGISTRY: "action-registry",
-  RULE_TESTER: "rule-tester",
   TTS_SERVICE: "tts-service",
   TIKFINITY: "tikfinity",
   MCPLUGIN: "mcplugin",
+  SAVE_EVENTS: "save-events"
 } as const;
 
 // ============================================================================
