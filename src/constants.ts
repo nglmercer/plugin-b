@@ -182,13 +182,15 @@ export const PATHS = {
 export const ACTIONS = {
   TTS: "TTS",
   LAST_COMMENT: "lastcomment",
-  MC: "mc",
+  MC_COMMAND: "minecraft:command",
   // New evaluation actions
   EVALUATE: "evaluate",
   EVALUATE_AND_SPEAK: "evaluate_and_speak",
   DATETIME: "datetime",
   TTS_DIRECT: "tts_direct",
   AI_RESPOND: "ai_respond",
+  // toggles
+  AUTOSAVE: "autosave"
 } as const;
 
 // ============================================================================
@@ -198,7 +200,6 @@ export const ACTIONS = {
 export const HELPERS = {
   LAST: "last",
   CLEAN: "clean",
-  MC_HELPER: "mcHelper",
 } as const;
 
 // ============================================================================

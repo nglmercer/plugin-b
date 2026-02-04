@@ -20,7 +20,7 @@ async function main() {
   Object.values(PLATFORMS).forEach((platform) => {
     console.log("events", platform);
     manager.on(platform, ({ eventName, data }) => {
-      console.log({ eventName, data });
+      //console.log({ eventName, data });
       if (!eventName || !data) {
         return;
       }
