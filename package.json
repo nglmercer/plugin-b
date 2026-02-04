@@ -32,6 +32,7 @@
     "cheerio": "^1.1.2",
     "install": "^0.13.0",
     "miniaudio_node": "^1.5.1",
+    "rcon-client": "^4.2.5",
     "string-dac": "^1.0.0",
     "tray-icon-node": "^0.1.1",
     "trigger_system": "^1.0.6",
