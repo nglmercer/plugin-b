@@ -9,7 +9,7 @@ import {
 import { TTScleaner } from "../src/services/cleaner";
 import { TTSService } from "./tts/index";
 import { PlaylistManager } from "../src/services/playlist";
-import { responde } from "./ai/generator";
+import { responde } from "./ai/cloud";
 import { VOICES } from "./tts/index";
 
 // Valid voice keys from Supertonic

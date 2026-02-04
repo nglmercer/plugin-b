@@ -11,7 +11,7 @@ import {
   AUDIO,
 } from "../src/constants";
 import { VOICES } from "./tts/index"; 
-import { responde } from "./ai/generator";
+import { responde } from "./ai/cloud";
 // Valid voice keys from Supertonic
 const VALID_VOICE_KEYS = Object.keys(VOICES);
 

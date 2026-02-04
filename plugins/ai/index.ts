@@ -49,9 +49,6 @@ export {
   type DocumentRecord,
 };
 
-// Generator export
-export { responde } from "./generator";
-
 /**
  * Initialize the AI module (LM Studio + LanceDB)
  * Returns true if both are available, false otherwise

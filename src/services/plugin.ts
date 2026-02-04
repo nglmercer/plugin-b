@@ -2,7 +2,6 @@ import { PluginManager } from "bun_plugins";
 import { ActionRegistry, RuleEngine } from "trigger_system/node";
 import { join } from "node:path";
 import { ActionRegistryPlugin } from "./RegisterPlugin";
-import { RuleTesterPlugin } from "../../plugins/TesterPlugin";
 import { ensureDir, getBaseDir } from "../../utils/filepath";
 /**
  * Gestor de plugins personalizado para TTS
@@ -18,7 +17,6 @@ export class BasePluginManager extends PluginManager {
     
     // Registrar los plugins core automáticamente
     this.register(new ActionRegistryPlugin());
-    this.register(new RuleTesterPlugin());
     console.log("📦 BasePluginManager: Plugins ActionRegistry y RuleTester registrados");
   }
 
