@@ -68,11 +68,11 @@ export default definePlugin({
             if (!message || !info) return;
             //temporal, not definitive for better filter
             if (info.engineType?.length !== 1) {
-              console.log({ invalidtype: info.engineType });
+            //  console.log({ invalidtype: info.engineType });
             }
             const data = parseSocketIo42Message(message);
             if (!data || !data.eventName) {
-              console.log(info);
+              //console.log(info);
               return;
             }
             const eventName = data.eventName;

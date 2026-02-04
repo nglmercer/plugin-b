@@ -1,6 +1,7 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { PLUGIN_NAMES, ACTIONS, HELPERS,PLATFORMS } from "../src/constants";
 import { getRegistryPlugin } from "./Interface/ActionRegistryApi";
+import { object } from "arktype/internal/attributes.ts";
 
 export class saveDataPlugin implements IPlugin {
   name = PLUGIN_NAMES.SAVE_EVENTS;
@@ -29,7 +30,15 @@ export class saveDataPlugin implements IPlugin {
           if (!eventName || !data) {
             return;
           }
-          this.context?.storage.set(`${platform}:${eventName}`,data)
+          if (typeof data !== 'object')return;
+          let savedata = {}
+          try {
+            savedata = Bun.JSONL.parse(data);
+            
+            Bun.write(`./data/${eventName}.json`,JSON.stringify(savedata))
+          } catch (error) {
+
+          }
         });
       });
   }
