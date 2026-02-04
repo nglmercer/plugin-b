@@ -49,6 +49,10 @@ export {
   type DocumentRecord,
 };
 
+// TTS exports
+import { TTSService } from "../tts/index";
+export { TTSService };
+
 /**
  * Initialize the AI module (LM Studio + LanceDB)
  * Returns true if both are available, false otherwise
@@ -128,14 +132,31 @@ async function testAI() {
   } else {
     console.warn("[AI Module] Database not available");
   }
+
+  // Test TTS
+  console.log("\n[AI Module] Testing TTS synthesis...");
+  try {
+    const tts = new TTSService("./output/test_tts");
+    const result = await tts.synthesize(
+      "Hola, esto es una prueba del sistema de voz de inteligencia artificial.",
+      "F1",
+      "test_voice"
+    );
+    console.log(`[AI Module] TTS synthesis successful!`);
+    console.log(`[AI Module] Saved to: ${result.savedPath}`);
+    console.log(`[AI Module] Detected language: ${result.detectedLanguage}`);
+  } catch (error) {
+    console.error(`[AI Module] TTS synthesis failed:`, error);
+  }
   
   console.log("\n[AI Module] Test completed!");
     } catch (error) {
         
     }
     setTimeout(function a(){
-    console.log("timeout")
-  },5000)
+    console.log("timeout exit")
+    process.exit(0)
+  },15000)
 }
 
 // Run test if this file is executed directly

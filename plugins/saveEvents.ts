@@ -24,20 +24,20 @@ export class saveDataPlugin implements IPlugin {
     });
       console.log(this.name, Object.values(PLATFORMS));
       Object.values(PLATFORMS).forEach((platform) => {
-        this.context?.on(platform, ({ eventName, data }) => {
-          //console.log({ eventName, data });
-          if (!this.save)return;
-          if (!eventName || !data) {
-            return;
-          }
-          if (typeof data !== 'object')return;
-          let savedata = {}
-          try {
-            savedata = Bun.JSONL.parse(data);
-            
-            Bun.write(`./data/${eventName}.json`,JSON.stringify(savedata))
-          } catch (error) {
+        this.context?.on(platform, async ({ eventName, data }) => {
+          if (!this.save) return;
+          if (!eventName || data == null) return;
 
+          try {
+            let parsedData = data;
+            if (typeof data === 'string') {
+              parsedData = JSON.parse(data);
+            } 
+            const filePath = `./data/${eventName}.json`;
+            await Bun.write(filePath, JSON.stringify(parsedData, null, 2), { createPath: true });
+
+          } catch (error) {
+            console.error(`[Parser] Error guardando snapshot de ${eventName}:`, error);
           }
         });
       });

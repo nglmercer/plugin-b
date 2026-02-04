@@ -1,7 +1,12 @@
-import { pipeline, TextToAudioOutput, TextToAudioPipelineOptions } from '@huggingface/transformers';
+import { pipeline, TextToAudioOutput, TextToAudioPipelineOptions, env } from '@huggingface/transformers';
 import { detectLanguage,type DetectionResult } from 'plugins/ai/llmstudio';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Set local cache directory to avoid conflicts and fix corruption issues
+env.cacheDir = path.resolve(process.cwd(), ".cache");
+env.allowLocalModels = false; // Force checking remote/cache
+
 
 // Tipado extendido para los métodos útiles
 interface AudioOutput extends TextToAudioOutput {

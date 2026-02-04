@@ -18,10 +18,14 @@ export async function detectLanguage(text: string): Promise<DetectionResult | nu
   return withLLMModel(
     async (model) => {
       const systemPrompt = `
-        JSON response: {
-        language: '(["en", "ko", "es", "pt", "fr", "unknown"]',
-        summary: 'summary if text is long, or is necesary make resumen'
-        }
+You are a precise language detection tool.
+Analyze the user input and extract the language and a summary.
+Respond ONLY with a valid JSON object. Do not add any other text, markdown formatting, or explanations.
+Format:
+{
+  "language": "en" | "ko" | "es" | "pt" | "fr" | "unknown",
+  "summary": "brief summary of the text"
+}
       `;
       
       const result = await model.respond([
@@ -29,10 +33,30 @@ export async function detectLanguage(text: string): Promise<DetectionResult | nu
         { role: "user", content: text.substring(0, 1000) }
       ], {
         temperature: 0.1,
-        maxTokens: 100,
       });
 
-      return JSON.parse(result.content) as DetectionResult;
+      let content = result.content.trim();
+      // Remove markdown code blocks if present
+      if (content.startsWith("```")) {
+        content = content.replace(/^```(json)?\n?/, "").replace(/\n?```$/, "");
+      }
+
+      try {
+        return JSON.parse(content) as DetectionResult;
+      } catch (e) {
+        // Fallback: try to find start and end brackets
+        const start = content.indexOf('{');
+        const end = content.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+          try {
+            return JSON.parse(content.substring(start, end + 1)) as DetectionResult;
+          } catch (inner) {
+             console.error("Failed to parse JSON from LLM response:", content);
+             throw e;
+          }
+        }
+        throw e;
+      }
     },
     null // fallback value when LM Studio is not available
   );
