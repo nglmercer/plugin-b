@@ -216,6 +216,26 @@ export async function withLLMModel<T>(
 }
 
 /**
+ * Execute a function with both the client and the LLM model
+ */
+export async function withLMStudio<T>(
+  fn: (client: LMStudioClient, model: LLM) => Promise<T>,
+  fallback: T
+): Promise<T> {
+  if (!isLMStudioAvailable()) return fallback;
+  
+  const model = await getLLMModel();
+  if (!model) return fallback;
+  
+  try {
+    return await fn(client!, model);
+  } catch (error) {
+    console.error("[ModelManager] Error using LM Studio:", error);
+    return fallback;
+  }
+}
+
+/**
  * Reset the model manager (useful for reconnection)
  */
 export function resetModelManager(): void {

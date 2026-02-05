@@ -82,7 +82,7 @@ export function isAIAvailable(): boolean {
 async function testAI() {
     try {
         
-
+let defaultText:string = "Hola, esto es una prueba del sistema de voz de inteligencia artificial.";
   console.log("[AI Module] Starting AI module test...\n");
   
   // Test initialization
@@ -116,6 +116,7 @@ async function testAI() {
       },
       '{"language": "unavailable"}'
     );
+    defaultText = detection;
     console.log(`[AI Module] Language detection response: ${detection}`);
   } else {
     console.warn("\n[AI Module] LM Studio not available, skipping model tests");
@@ -138,7 +139,7 @@ async function testAI() {
   try {
     const tts = new TTSService("./output/test_tts");
     const result = await tts.synthesize(
-      "Hola, esto es una prueba del sistema de voz de inteligencia artificial.",
+      defaultText,
       "F1",
       "test_voice"
     );

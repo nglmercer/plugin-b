@@ -1,5 +1,5 @@
 // llmstudio.ts - LLM utilities with try-catch for LM Studio
-import { withLLMModel } from "./model-manager";
+import { withLLMModel, withLMStudio } from "./model-manager";
 import { parseLLMResponse } from "./parser";
 import { z } from "zod";
 
@@ -47,7 +47,41 @@ Format:
     null // fallback value when LM Studio is not available
   );
 }
+/**
+ * Describe and detect content in images using LM Studio vision models
+ * @param imageSource Path to image file or base64 string
+ * @param prompt Query about the image
+ */
+export async function getImageDescription(imageSource: string, prompt: string = "Describe this image please"): Promise<string | null> {
+  return withLMStudio(
+    async (client, model) => {
+      let image;
+      
+      // Check if it's likely a base64 string or a file path
+      const isBase64 = imageSource.startsWith("data:") || 
+                      (imageSource.length > 200 && !imageSource.includes("/") && !imageSource.includes("\\"));
+      try {
+        if (isBase64) {
+          // Clean up base64 if it has the data URI prefix
+          const base64Data = imageSource.replace(/^data:image\/\w+;base64,/, "");
+          image = await client.files.prepareImageBase64('image.png',base64Data);
+        } else {
+          image = await client.files.prepareImage(imageSource);
+        }
 
+        const result = await model.respond([
+          { role: "user", content: prompt, images: [image] },
+        ]);
+
+        return result.content;
+      } catch (error) {
+        console.error("[LLMStudio] Error processing image:", error);
+        return null;
+      }
+    },
+    null
+  );
+}
 /**
  * Simple test for language detection
  */
