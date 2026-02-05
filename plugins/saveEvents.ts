@@ -30,6 +30,8 @@ export class saveDataPlugin implements IPlugin {
           try {
             let parsedData = data;
             if (typeof data === 'string') {
+              const isObjectLike = /^\s*\{[\s\S]*\}\s*$/.test(data);
+              if (!isObjectLike) return;
               parsedData = JSON.parse(data);
             } 
             const filePath = `./data/${eventName}.json`;

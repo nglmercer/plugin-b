@@ -2,14 +2,73 @@ import type { IPlugin, PluginContext } from "bun_plugins";
 import { PLUGIN_NAMES, ACTIONS, HELPERS,PLATFORMS } from "../src/constants";
 import { getRegistryPlugin } from "./Interface/ActionRegistryApi";
 import { startListener,simulateEvent,EventTypeValue,stringKeyToKeycode,type KeyCode } from "rdev-node";
+export class InputManager {
+  private pressedKeys = new Set<KeyCode>();
+  private shortcuts = new Map<string, () => void>();
+  private activeShortcuts = new Set<string>();
+
+  constructor() {
+    this.init();
+  }
+
+  private init() {
+    startListener((event) => {
+      const { eventType, keyPress, keyRelease } = event;
+
+      if (eventType === EventTypeValue.KeyPress && keyPress) {
+        this.pressedKeys.add(keyPress.key);
+        this.checkShortcuts();
+      } 
+      else if (eventType === EventTypeValue.KeyRelease && keyRelease) {
+        this.pressedKeys.delete(keyRelease.key);
+        this.activeShortcuts.clear(); 
+      }
+      return event;
+    });
+  }
+
+  /**
+   * Registra un shortcut
+   */
+  register(combo: string, callback: () => void) {
+    const normalizedCombo = combo
+      .split('+')
+      .map(p => {
+        const code = stringKeyToKeycode(p.trim());
+        if (code === undefined) throw new Error(`Key no válida: ${p}`);
+        return code;
+      })
+      .sort()
+      .join(',');
+
+    this.shortcuts.set(normalizedCombo, callback);
+  }
+
+  private checkShortcuts() {
+    const currentKeysHash = Array.from(this.pressedKeys).sort().join(',');
+
+    this.shortcuts.forEach((callback, comboHash) => {
+      if (this.isComboPressed(comboHash) && !this.activeShortcuts.has(comboHash)) {
+        callback();
+        this.activeShortcuts.add(comboHash);
+      }
+    });
+  }
+
+  private isComboPressed(comboHash: string): boolean {
+    const comboKeys = comboHash.split(',');
+    return comboKeys.every(key => this.pressedKeys.has(stringKeyToKeycode(key)!));
+  }
+}
 export class inputPlugin implements IPlugin {
   name = "input-plugin";
   version = "1.0.0";
   private context?: PluginContext;
-  private save?: boolean = true;
+  private isListener?: boolean = false;
 
   async onLoad(context: PluginContext) {
     this.context = context;
+    const inputManager = new InputManager();
     const registryPlugin = await getRegistryPlugin(context);
     if (!registryPlugin) return;
     registryPlugin.registry.register(ACTIONS.SEVENT, (action, ctx) => {
@@ -49,31 +108,22 @@ export class inputPlugin implements IPlugin {
         }
         return true;
     });
-    const spaceKey = stringKeyToKeycode("space");
-    const alt = stringKeyToKeycode("alt");
-    let pressed: KeyCode[] = [];
-    startListener((input)=>{
-      const {eventType,keyPress,keyRelease} = input;
-        if (eventType === EventTypeValue.KeyPress){
-          if (!keyPress) return input;
-          pressed.push(keyPress.key);
-          if (pressed.includes(spaceKey!) && pressed.includes(alt!)){
-            console.log("[InputPlugin] Space pressed! Triggering test_trigger...");
-            // Emit the event to the system platform
-            // This will be caught by the main.ts loop and processed by the engine
-            this.context?.emit(PLATFORMS.SYSTEM, { eventName: 'test_trigger', data: {} });
-            pressed = [];
-          }
-        } else if (eventType === EventTypeValue.KeyRelease){
-          if (!keyRelease) return input;
-          pressed = pressed.filter((key) => key !== keyRelease.key);
-        }
-        return input
-    });
+    this.list(inputManager);
+    //const spaceKey = stringKeyToKeycode("space");
+    //const alt = stringKeyToKeycode("alt");
+
   }
-  
+  list(inputManager:InputManager) {
+    if (this.isListener) return;
+    this.isListener = true;
+    this.context?.log.info("input-plugin onLoad");
+    inputManager.register("Ctrl+Shift+1", () => {
+      console.log("Ctrl+Shift+1 pressed!")
+      this.context?.emit(PLATFORMS.SYSTEM, { eventName: 'test_trigger', data: {} });
+    })
+  }
   onUnload() {
-    
+    this.isListener = false;
   }
 
 

@@ -10,7 +10,7 @@ import { PLUGIN_NAMES } from "../constants";
  */
 export class BasePluginManager extends PluginManager {
   public engine: RuleEngine;
-
+  public alreadyLoaded: boolean = false;
   constructor() {
     super();
     // Inicializar el motor de reglas
@@ -40,6 +40,8 @@ export class BasePluginManager extends PluginManager {
    * Carga plugins desde el directorio configurado por defecto
    */
   async loadDefaultPlugins() {
+    if (this.alreadyLoaded) return;
+    this.alreadyLoaded = true;
     const pluginsDir = join(getBaseDir(), "plugins");
     await ensureDir(pluginsDir);
     await this.loadPluginsFromDirectory(pluginsDir);
