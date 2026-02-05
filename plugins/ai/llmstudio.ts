@@ -1,5 +1,6 @@
 // llmstudio.ts - LLM utilities with try-catch for LM Studio
 import { withLLMModel } from "./model-manager";
+import { parseLLMResponse } from "./parser";
 import { z } from "zod";
 
 // Define the schema with Zod for better type safety
@@ -41,22 +42,7 @@ Format:
         content = content.replace(/^```(json)?\n?/, "").replace(/\n?```$/, "");
       }
 
-      try {
-        return JSON.parse(content) as DetectionResult;
-      } catch (e) {
-        // Fallback: try to find start and end brackets
-        const start = content.indexOf('{');
-        const end = content.lastIndexOf('}');
-        if (start !== -1 && end !== -1) {
-          try {
-            return JSON.parse(content.substring(start, end + 1)) as DetectionResult;
-          } catch (inner) {
-             console.error("Failed to parse JSON from LLM response:", content);
-             throw e;
-          }
-        }
-        throw e;
-      }
+      return parseLLMResponse<DetectionResult>(content);
     },
     null // fallback value when LM Studio is not available
   );

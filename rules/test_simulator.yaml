@@ -3,6 +3,7 @@
 - id: trigger-test-chat
   on: test_trigger
   do:
+    mode: SEQUENCE
     actions:
       - type: emitEvent
         params:
@@ -15,6 +16,7 @@
 - id: simulation-feedback
   on: chat
   do:
+    mode: SEQUENCE
     actions:
       - type: log
         params:

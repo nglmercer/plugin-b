@@ -1,7 +1,7 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { PLUGIN_NAMES, ACTIONS, HELPERS,PLATFORMS } from "../src/constants";
 import { getRegistryPlugin } from "./Interface/ActionRegistryApi";
-import { startListener,simulateEvent,EventTypeValue,stringKeyToKeycode } from "rdev-node";
+import { startListener,simulateEvent,EventTypeValue,stringKeyToKeycode,type KeyCode } from "rdev-node";
 export class inputPlugin implements IPlugin {
   name = "input-plugin";
   version = "1.0.0";
@@ -49,29 +49,27 @@ export class inputPlugin implements IPlugin {
         }
         return true;
     });
+    const spaceKey = stringKeyToKeycode("space");
+    const alt = stringKeyToKeycode("alt");
+    let pressed: KeyCode[] = [];
     startListener((input)=>{
-      const {eventType,keyPress} = input;
+      const {eventType,keyPress,keyRelease} = input;
         if (eventType === EventTypeValue.KeyPress){
           if (!keyPress) return input;
-          if (keyPress.key === stringKeyToKeycode("space")){
-            
-            // TODO: implement event emition
-            /*
-            - id: trigger-test-chat
-                on: test_trigger
-                do:
-                  actions:
-                    - type: emitEvent
-                      params:
-                        eventName: chat
-                        filePath: data/chat.json
-                        platform: tiktok
-            */
-           //engine.emulate engine.processEventSimple('test_trigger', {}, {});
+          pressed.push(keyPress.key);
+          if (pressed.includes(spaceKey!) && pressed.includes(alt!)){
+            console.log("[InputPlugin] Space pressed! Triggering test_trigger...");
+            // Emit the event to the system platform
+            // This will be caught by the main.ts loop and processed by the engine
+            this.context?.emit(PLATFORMS.SYSTEM, { eventName: 'test_trigger', data: {} });
+            pressed = [];
           }
+        } else if (eventType === EventTypeValue.KeyRelease){
+          if (!keyRelease) return input;
+          pressed = pressed.filter((key) => key !== keyRelease.key);
         }
         return input
-    })
+    });
   }
   
   onUnload() {

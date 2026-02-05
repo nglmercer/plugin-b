@@ -13,6 +13,7 @@ export const PLATFORMS = {
   TWITCH: "twitch",
   TIKTOK: "tiktok",
   KICK: "kick",
+  SYSTEM: "system",
 } as const;
 
 export type Platform = (typeof PLATFORMS)[keyof typeof PLATFORMS];
