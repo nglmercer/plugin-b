@@ -190,7 +190,10 @@ export const ACTIONS = {
   TTS_DIRECT: "tts_direct",
   AI_RESPOND: "ai_respond",
   // toggles
-  AUTOSAVE: "autosave"
+  AUTOSAVE: "autosave",
+  // input
+  SEVENT: "simulateEvent",
+  EMIT_EVENT: "emitEvent"
 } as const;
 
 // ============================================================================

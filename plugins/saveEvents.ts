@@ -1,7 +1,6 @@
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { PLUGIN_NAMES, ACTIONS, HELPERS,PLATFORMS } from "../src/constants";
 import { getRegistryPlugin } from "./Interface/ActionRegistryApi";
-import { object } from "arktype/internal/attributes.ts";
 
 export class saveDataPlugin implements IPlugin {
   name = PLUGIN_NAMES.SAVE_EVENTS;

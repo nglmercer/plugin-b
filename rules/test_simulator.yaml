@@ -1,0 +1,21 @@
+# Test rule to trigger a simulation
+# This rule triggers another rule by simulating a 'chat' event
+- id: trigger-test-chat
+  on: test_trigger
+  do:
+    actions:
+      - type: emitEvent
+        params:
+          eventName: chat
+          filePath: data/chat.json
+          platform: tiktok
+
+# Another rule that would be triggered by 'chat' event
+# (This is already in rules/comment.yaml, but we could add another one here for testing)
+- id: simulation-feedback
+  on: chat
+  do:
+    actions:
+      - type: log
+        params:
+          message: "Simulator worked! Received chat event from: ${data.uniqueId}"

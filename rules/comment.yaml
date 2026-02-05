@@ -1,6 +1,5 @@
-# import alias from ./path/to/file.json
+# @import data from '../../data/chat.json'
 # chat comment
-# ${data.comment || data.user.comment}
 - id: rule-id
   on: chat
   if:
