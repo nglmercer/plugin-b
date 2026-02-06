@@ -24,7 +24,10 @@
     actions:
       - type: TTS
         params:
-          message: ${globals.clean(data.comment)}
+          message: ${data.comment}
+      - type: AI_RESPOND
+        params:
+          prompt: ${globals.clean(data.comment)}
       - type: log
         params:
-          message: "Processed comment: ${globals.clean(data.comment)}"
+          message: "AI response: ${data.comment}"

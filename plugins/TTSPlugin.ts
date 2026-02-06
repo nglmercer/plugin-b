@@ -11,7 +11,6 @@ import {
   AUDIO,
 } from "../src/constants";
 import { VOICES } from "./tts/index"; 
-import { responde } from "./ai/cloud";
 // Valid voice keys from Supertonic
 const VALID_VOICE_KEYS = Object.keys(VOICES);
 
@@ -97,9 +96,7 @@ export class TTSPlugin implements IPlugin {
       if (!action.params?.message) return;
       let result = await TTScleaner.processMessage(String(action.params?.message));
       if (!result?.cleanedText) return;
-      if (String(action.params?.message).includes('ai')){
-        result = await TTScleaner.processMessage(await responde(String(action.params?.message)))
-      }
+      
       // Save last message
       await storage.set(STORAGE_KEYS.LAST_MESSAGE, result.cleanedText);
 

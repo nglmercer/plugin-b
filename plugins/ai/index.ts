@@ -166,3 +166,7 @@ if (import.meta.main) {
 }
 
 export { testAI };
+
+// Tools exports
+export { runWithTools } from "./tool-calling";
+export * from "./tools";

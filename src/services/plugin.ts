@@ -12,7 +12,9 @@ export class BasePluginManager extends PluginManager {
   public engine: RuleEngine;
   public alreadyLoaded: boolean = false;
   constructor() {
-    super();
+    super(undefined,{
+      pluginLoadTimeout: 15000
+    });
     // Inicializar el motor de reglas
     this.engine = new RuleEngine({ rules: [], globalSettings: { debugMode: true } });
     
