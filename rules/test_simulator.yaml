@@ -10,14 +10,6 @@
           eventName: chat
           filePath: data/chat.json
           platform: tiktok
-
-# Another rule that would be triggered by 'chat' event
-# (This is already in rules/comment.yaml, but we could add another one here for testing)
-- id: simulation-feedback
-  on: chat
-  do:
-    mode: SEQUENCE
-    actions:
       - type: log
         params:
-          message: "Simulator worked! Received chat event from: ${data.uniqueId}"
+          message: "emitEvent tiktok chat"

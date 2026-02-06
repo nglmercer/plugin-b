@@ -58,7 +58,7 @@ export class simulatorPlugin implements IPlugin {
 
         const data = await file.json();
         console.log(`[Simulator] 🚀 Simulating event "${eventName}" on platform "${platform}"`);
-        console.log(`[Simulator] Using data from: ${filePath}`);
+        console.log(`[Simulator] Using data from: ${absolutePath}`);
 
         // Emit the event to the PluginManager/System
         // This will be picked up by the main event loop and processed by the RuleEngine
