@@ -1,9 +1,10 @@
 // lancedb-store.ts - LanceDB storage for embeddings and documents
-import lancedb, { type Connection, type Table, type SchemaLike } from "@lancedb/lancedb";
+import lancedb, { type Connection, type Table } from "@lancedb/lancedb";
 import type { EmbeddingModel } from "@lmstudio/sdk";
 import { CONFIG } from "./constants";
 import * as path from "path";
 import * as fs from "fs";
+import { Schema, Field, FixedSizeList, Float32, Utf8, Null, Timestamp } from "apache-arrow";
 
 // Table schema interface
 export interface DocumentRecord {
@@ -15,21 +16,17 @@ export interface DocumentRecord {
   createdAt: Date;
 }
 
-// Define the schema using FieldLike objects (type-safe without needing Arrow imports)
-const documentSchema: SchemaLike = {
-  fields: [
-    { type: "utf8", name: "id", nullable: false },
-    { type: "utf8", name: "title", nullable: false },
-    { type: "utf8", name: "content", nullable: false },
-    { type: `fixed_size_list<${768}, float32>`, name: "embedding", nullable: false },
-    { type: "null", name: "metadata", nullable: true },
-    { type: "timestamp[ms]", name: "createdAt", nullable: false },
-  ],
-  metadata: new Map(),
-  get names() {
-    return ["id", "title", "content", "embedding", "metadata", "createdAt"];
-  },
-};
+// Define the schema using Apache Arrow types.
+// Use Field to satisfy Schema constructor's generic requirement.
+const documentSchema = new Schema([
+  new Field("id", new Utf8(), false),
+  new Field("title", new Utf8(), false),
+  new Field("content", new Utf8(), false),
+  new Field("embedding", new FixedSizeList(768, new Field("item", new Float32(), true)), false),
+  new Field("metadata", new Null(), true),
+  // Timestamp with numeric unit (1 = millisecond) to satisfy sanitizer's requirement
+  new Field("createdAt", new Timestamp(1), false),
+]);
 
 let db: Connection | null = null;
 let table: Table | null = null;

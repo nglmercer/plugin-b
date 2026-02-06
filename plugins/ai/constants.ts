@@ -5,7 +5,7 @@ export const CONFIG = {
   DB_URI: "data/lancedb-store",
   TABLE_NAME: "knowledge_base",
   MODELS: {
-    EMBEDDING: "text-embedding-granite-embedding-278m-multilingual",
+    EMBEDDING: "text-embedding-qwen3-embedding-0.6b",
     CHAT: "lfm2.5-vl-1.6b"
   },
   PREFIXES: {

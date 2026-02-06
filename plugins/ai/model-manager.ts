@@ -13,7 +13,7 @@ let initializationError: Error | null = null;
  * Initialize LM Studio client with error handling
  * Returns true if successful, false if LM Studio is not available
  */
-export async function initializeLMStudio(timeoutMs: number = 5000): Promise<boolean> {
+export async function initializeLMStudio(timeoutMs: number = 15000): Promise<boolean> {
   if (isInitialized) return initializationError === null;
   
   // Store original functions to prevent SDK from crashing the app
