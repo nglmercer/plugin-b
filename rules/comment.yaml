@@ -23,9 +23,9 @@
 
       # Quality filter - skips gibberish, repetitive patterns, etc.
       # See: plugins/ai/constants.ts for configuration
-      - field: ${globals.isHighQuality(data.comment)}
-        operator: EQ
-        value: true
+      - field: ${data.comment}
+        operator: NOT_IN
+        value: ["!ia","!ai"]
   do:
     mode: SEQUENCE
     actions:

@@ -21,8 +21,9 @@
         value: 3
 
       - field: ${data.comment}
+        #this value is a command to trigger the ai
         operator: CONTAINS
-        value: ["!ia","!ai!"]
+        value: ["!ia","!ai"]
   do:
     mode: SEQUENCE
     actions:

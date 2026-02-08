@@ -1,10 +1,22 @@
 # @import data from '../../data/gift.json'
 # Comprehensive test using imported data for autocompletion
 
-- id: test-imported-data
+- id: general-gift
+  on: gift
+  do:
+    mode: SEQUENCE
+    actions:
+      - type: log
+        params:
+          message: ${data.nickname} envio ${data.giftName}
+      - type: TTS
+        params:
+          message: ${data.nickname} envio ${data.giftName}
+
+- id: Rose-gift
   on: gift
   if:
-    field: data.gift.gift_id
+    field: ${data.gift.gift_id}
     operator: EQ
     value: 5655
   do:
@@ -13,3 +25,4 @@
       - type: log
         params:
           message: ${data.nickname} envio ${data.giftName}
+      # TODO: Implement specific actions for rose gift

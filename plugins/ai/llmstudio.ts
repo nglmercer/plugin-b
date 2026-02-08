@@ -20,12 +20,12 @@ export async function detectLanguage(text: string): Promise<DetectionResult | nu
     async (model) => {
       const systemPrompt = `
 You are a precise language detection tool.
-Analyze the user input and extract the language and a summary.
+Analyze the user input and extract the language and a interprete message.
 Respond ONLY with a valid JSON object. Do not add any other text, markdown formatting, or explanations.
 Format:
 {
   "language": "en" | "ko" | "es" | "pt" | "fr" | "unknown",
-  "summary": "brief summary of the text"
+  "summary": "summary or interpret message"
 }
       `;
       
