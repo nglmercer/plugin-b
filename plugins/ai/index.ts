@@ -157,7 +157,7 @@ let defaultText:string = "Hola, esto es una prueba del sistema de voz de intelig
     setTimeout(function a(){
     console.log("timeout exit")
     process.exit(0)
-  },15000)
+  },30000)
 }
 
 // Run test if this file is executed directly

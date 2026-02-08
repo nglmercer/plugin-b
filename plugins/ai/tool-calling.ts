@@ -17,6 +17,10 @@ You are a helpful assistant with access to the following tools:
 4. tts: Convert text to speech and save audio file.
    Parameters: text (string, required), voice (string, optional, default "F1"), filename (string, optional)
 
+5. evaluate_quality: Evaluate if a message is high quality and worth responding to.
+   Parameters: message (string, required), minScore (number, optional, default 30)
+   Returns: { isHighQuality: boolean, score: number, reasons: string[], recommendation: string }
+
 When you need to use a tool, respond with a JSON object in this exact format:
 {
   "tool": "tool_name",

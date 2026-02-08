@@ -2,6 +2,7 @@ import type { IPlugin, PluginContext } from "bun_plugins";
 import { ActionRegistry } from "trigger_system/node";
 import { TTScleaner } from "./cleaner";
 import { PLUGIN_NAMES, HELPERS } from "../constants";
+import { shouldProcessMessage, evaluateMessageQuality } from "./message-quality";
 
 /**
  * Registro simple para funciones auxiliares (helpers/globals)
@@ -58,6 +59,15 @@ export class ActionRegistryPlugin implements IPlugin {
 
     this.helperRegistry.register(HELPERS.CLEAN, (t: any) => {
       return TTScleaner.cleanOnly(String(t || ""));
+    });
+
+    // Quality filter helpers
+    this.helperRegistry.register(HELPERS.IS_HIGH_QUALITY, (t: any) => {
+      return shouldProcessMessage(String(t || ""));
+    });
+
+    this.helperRegistry.register(HELPERS.EVALUATE_QUALITY, (t: any) => {
+      return evaluateMessageQuality(String(t || ""));
     });
   }
 

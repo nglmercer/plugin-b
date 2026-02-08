@@ -13,7 +13,7 @@ export class BasePluginManager extends PluginManager {
   public alreadyLoaded: boolean = false;
   constructor() {
     super(undefined,{
-      pluginLoadTimeout: 15000
+      pluginLoadTimeout: 30000
     });
     // Inicializar el motor de reglas
     this.engine = new RuleEngine({ rules: [], globalSettings: { debugMode: true } });
